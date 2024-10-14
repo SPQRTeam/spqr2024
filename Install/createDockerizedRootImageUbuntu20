@@ -1,0 +1,34 @@
+#!/bin/bash
+
+baseDir="$(cd "$(dirname "$(which "$0")")" && pwd)"
+bhDir="$(dirname "${baseDir}")"
+includeDir="${baseDir}/Include"
+
+keep_image=false
+
+while getopts 'k' OPTION; do
+  case "$OPTION" in
+    k)
+      keep_image=true
+      ;;
+    ?)
+      echo "script usage: $(basename "$0") [-k: keeps the docker image]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+shift "$(($OPTIND - 1))"
+
+source "${includeDir}/bhumanBase"
+
+checkRoot
+
+checkApp "docker"
+
+docker build -t nao-image Docker/
+docker run --rm --privileged -v .:/workspace nao-image ./createRootImageUbuntu20 /nao-2.8.5.11_ROBOCUP_ONLY_with_root.opn
+
+if [[ $keep_image == false ]]; then
+    docker rmi nao-image
+fi

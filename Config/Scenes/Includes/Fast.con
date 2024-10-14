@@ -1,0 +1,102 @@
+# Configuration for simulation scenes with oracled world models
+
+cs Simulate
+
+# activate simulation time
+st on
+
+# only a single robot displays game state
+dr debugDrawing3d:representation:GameInfo
+dr debugDrawing3d:representation:TeamInfo
+
+# in case we have more than a single robot
+robot all
+
+# Fast, because we do not compute images
+ci off
+
+# Select modules for simulator
+mr CameraInfo LogDataProvider Lower
+mr CameraInfo LogDataProvider Upper
+
+mr FrameInfo LogDataProvider Lower
+mr FrameInfo LogDataProvider Upper
+mr FrameInfo LogDataProvider Motion
+
+mr CameraCalibration off
+mr CameraCalibration ConfigurationDataProvider Upper
+mr CameraCalibration ConfigurationDataProvider Lower
+
+mr FsrSensorData LogDataProvider Motion
+mr InertialSensorData LogDataProvider Motion
+mr JointSensorData LogDataProvider Motion
+mr KeyStates LogDataProvider Motion
+mr GroundTruthWorldState LogDataProvider Cognition
+mr GroundTruthRobotPose OracledWorldModelProvider Cognition
+mr GroundTruthBallModel OracledWorldModelProvider Cognition
+
+mr BallModel OracledWorldModelProvider Cognition
+mr TeamBallModel OracledWorldModelProvider Cognition
+mr ObstacleModel OracledWorldModelProvider Cognition
+mr RobotPose OracledWorldModelProvider Cognition
+mr TeamPlayersModel OracledWorldModelProvider Cognition
+
+# Deactivate Upper/Lower inter-thread communication
+mr ObstaclesPerceptorData off
+mr OtherFieldBoundary off
+mr OtherGoalPostsPercept off
+mr OtherObstaclesPerceptorData off
+
+# Representations not required anymore
+mr AlternativeRobotPoseHypothesis off
+mr AudioData off
+mr AutoExposureWeightTable off
+mr BallContactChecker off
+mr BallPercept off
+mr BallSpots off
+mr BodyContour off
+mr CameraCalibrationStatus off
+mr CameraImage off
+mr CameraIntrinsics off
+mr CameraResolutionRequest off
+mr CirclePercept off
+mr CNSImage off
+mr CNSPenaltyMarkRegions off
+mr CNSRegions off
+mr ColorScanLineRegionsHorizontal off
+mr ColorScanLineRegionsVerticalClipped off
+mr ECImage off
+mr FieldLineIntersections off
+mr FieldLines off
+mr FilteredBallPercepts off
+mr GoalPostsPercept off
+mr IntersectionRelations off
+mr IntersectionsPercept off
+mr JerseyClassifier off
+mr JPEGImage off
+mr LinesPercept off
+mr MidCircle off
+mr ObstaclesImagePercept off
+mr PenaltyArea off
+mr PenaltyMarkPercept off
+mr PenaltyMarkRegions off
+mr PenaltyMarkWithPenaltyAreaLine off
+mr PerceptRegistration off
+mr RelativeFieldColors off
+mr ScanGrid off
+mr SelfLocalizationHypotheses off
+mr SideInformation off
+mr WorldModelPrediction off
+
+# Representations that are still required
+mr FieldBoundary default         # needed to avoid error (set this to off to see the error)
+mr ImageCoordinateSystem default # needed to avoid error (set this to off to see the error)
+
+mr CameraStatus default
+mr FieldFeatureOverview default
+mr ObstaclesFieldPercept default
+mr RobotHealth default
+mr Whistle default
+
+call Includes/GameStates
+call Includes/DebugResponses

@@ -1,0 +1,20 @@
+#!/bin/bash
+if [ "$(uname)" = "Darwin" ]; then
+  baseDir=$(cd "$(dirname "$(which "$0")")" && pwd)
+  if [ "$(uname -m)" = arm64 ]; then
+    export GVBINDIR=$baseDir/macOSarm64
+  else
+    export GVBINDIR=$baseDir/macOS
+  fi
+  "$GVBINDIR/dot" $@
+else 
+  export PATH=$PATH:/usr/local/bin
+  dot=$(which dot 2> /dev/null)
+  retVal=$?
+  if [ ${retVal} -eq 0 ]; then
+    $dot $@
+  else
+    echo "dot executable was not found" >&2
+    echo "Install graphviz or check your PATH environment variable" >&2
+  fi
+fi

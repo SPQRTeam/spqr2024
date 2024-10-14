@@ -1,0 +1,31 @@
+# button 4: walk mode
+# button 2: stand mode
+# button 2 in stand mode: sit down (stand mode is default)
+# left stick: walk forward/sideward
+# buttons 1+3: turn left/right
+# right stick: tilt/pan head
+
+js 6 0.8 0.01 0.32 # head tilt axis
+js 3 1.7 0.01 # head pan axis
+
+js 2 1 0.01 # walk x axis
+js 1 1 0.03 # walk y axis
+js 7 1 0.01 # walk rotation axis
+
+# map r and l keys to the rotation axis
+jm 7 1 3
+
+jc motion 1 set representation:HeadMotionRequest mode = panTiltMode; cameraControlMode = autoCamera; pan = $3; tilt = $6; speed = 0.5; target = { x = 1; y = 0; z = 0; }; stopAndGoMode = false;
+
+# activate walk mode
+jc press 4 jc motion 2 set representation:MotionRequest motion = walkAtRelativeSpeed; standHigh = true; walkSpeed = { rotation = $7; translation = { x = $2; y = $1; }; }; walkTarget = { rotation = 0deg; translation = { x = 0; y = 0; }; }; keepTargetRotation = false; obstacleAvoidance = { avoidance = { x = 0; y = 0; }; path = []; }; targetDirection = 0deg; directionPrecision = { min = 0deg; max = 0deg; }; kickType = forwardFastLeft; kickPower = 0; alignPrecisely = false; preStepAllowed = true; turnKickAllowed = true; keyframeMotionRequest = { keyframeMotion = decideAutomatic; mirror = false; }; odometryData = { rotation = 0; translation = { x = 0; y = 0; }; }; ballEstimate = { position = { x = 0; y = 0; }; velocity = { x = 0; y = 0; }; rotation = 0; radius = 50; covariance = { cols = [ { elems = [ 1, 0 ]; }, { elems = [ 0, 1 ]; } ]; }; }; ballEstimateTimestamp = 0; ballTimeWhenLastSeen = 0;
+
+# button 2 -> stand mode
+jc release 4 jc press 2 jc motion 2 set representation:MotionRequest motion = stand; standHigh = true; walkSpeed = { rotation = 0; translation = { x = 0; y = 0; }; }; walkTarget = { rotation = 0deg; translation = { x = 0; y = 0; }; }; keepTargetRotation = false; obstacleAvoidance = { avoidance = { x = 0; y = 0; }; path = []; }; targetDirection = 0deg; directionPrecision = { min = 0deg; max = 0deg; }; kickType = forwardFastLeft; kickPower = 0; alignPrecisely = false; preStepAllowed = true; turnKickAllowed = true; keyframeMotionRequest = { keyframeMotion = decideAutomatic; mirror = false; }; odometryData = { rotation = 0; translation = { x = 0; y = 0; }; }; ballEstimate = { position = { x = 0; y = 0; }; velocity = { x = 0; y = 0; }; rotation = 0; radius = 50; covariance = { cols = [ { elems = [ 1, 0 ]; }, { elems = [ 0, 1 ]; } ]; }; }; ballEstimateTimestamp = 0; ballTimeWhenLastSeen = 0;
+
+# stand mode
+jc press 2 jc motion 2 set representation:MotionRequest motion = keyframeMotion; standHigh = true; walkSpeed = { rotation = 0; translation = { x = 0; y = 0; }; }; walkTarget = { rotation = 0deg; translation = { x = 0; y = 0; }; }; keepTargetRotation = false; obstacleAvoidance = { avoidance = { x = 0; y = 0; }; path = []; }; targetDirection = 0deg; directionPrecision = { min = 0deg; max = 0deg; }; kickType = forwardFastLeft; kickPower = 0; alignPrecisely = false; preStepAllowed = true; turnKickAllowed = true; keyframeMotionRequest = { keyframeMotion = sitDown; mirror = false; }; odometryData = { rotation = 0; translation = { x = 0; y = 0; }; }; ballEstimate = { position = { x = 0; y = 0; }; velocity = { x = 0; y = 0; }; rotation = 0; radius = 50; covariance = { cols = [ { elems = [ 1, 0 ]; }, { elems = [ 0, 1 ]; } ]; }; }; ballEstimateTimestamp = 0; ballTimeWhenLastSeen = 0;
+
+# button 2 again -> sit down
+jc release 2 jc press 2 jc motion 2 set representation:MotionRequest motion = keyframeMotion; standHigh = true; walkSpeed = { rotation = 0; translation = { x = 0; y = 0; }; }; walkTarget = { rotation = 0deg; translation = { x = 0; y = 0; }; }; keepTargetRotation = false; obstacleAvoidance = { avoidance = { x = 0; y = 0; }; path = []; }; targetDirection = 0deg; directionPrecision = { min = 0deg; max = 0deg; }; kickType = forwardFastLeft; kickPower = 0; alignPrecisely = false; preStepAllowed = true; turnKickAllowed = true; keyframeMotionRequest = { keyframeMotion = sitDown; mirror = false; }; odometryData = { rotation = 0; translation = { x = 0; y = 0; }; }; ballEstimate = { position = { x = 0; y = 0; }; velocity = { x = 0; y = 0; }; rotation = 0; radius = 50; covariance = { cols = [ { elems = [ 1, 0 ]; }, { elems = [ 0, 1 ]; } ]; }; }; ballEstimateTimestamp = 0; ballTimeWhenLastSeen = 0;
+

@@ -1,0 +1,53 @@
+<Simulation>
+
+  <Surface name="obs-black" diffuseColor="rgb(0%, 0%, 0%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-blue" diffuseColor="rgb(0%, 0%, 100%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-red" diffuseColor="rgb(100%, 20%, 0%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-purple" diffuseColor="rgb(50%, 0%, 50%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-orange" diffuseColor="rgb(60%, 30%, 10%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-yellow" diffuseColor="rgb(100%, 87%, 0%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+  <Surface name="obs-pink" diffuseColor="rgb(99%, 47%, 67%)" specularColor="rgb(60%, 60%, 60%)" shininess="30"/>
+
+  <Body name="obstacleBlue">
+    <SphereAppearance radius="0.0625">
+      <Surface ref="obs-blue"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstacleBlack">
+    <SphereAppearance radius="0.0625">
+      <Surface ref="obs-black"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstacleRed">
+    <SphereAppearance radius="0.0625">
+      <Surface ref="obs-red"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstaclePurple">
+    <SphereAppearance radius="0.0625">
+      <Surface ref="obs-purple"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstacleOrange">
+    <SphereAppearance radius="0.0625">
+      <Surface ref="obs-orange"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstacleYellow">
+    <SphereAppearance radius="0.1025">
+      <Surface ref="obs-yellow"/>
+    </SphereAppearance>
+  </Body>
+
+  <Body name="obstaclePink">
+    <SphereAppearance radius="0.1025">
+      <Surface ref="obs-pink"/>
+    </SphereAppearance>
+  </Body>
+
+</Simulation>

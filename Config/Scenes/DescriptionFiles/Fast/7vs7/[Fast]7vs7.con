@@ -1,0 +1,21 @@
+call Includes/Fast #SIM
+
+# field views
+vf worldState
+vfd worldState fieldLines
+vfd worldState goalFrame
+vfd worldState fieldPolygons
+vfd worldState representation:RobotPose
+vfd worldState representation:FieldBall:global
+
+dr debugDrawing3d:representation:RobotInfo
+dr debugDrawing3d:representation:RobotPose
+
+# dr debugDrawing3d:module:LibStrikerProvider:strikerPosition
+# dr debugDrawing3d:module:LibJollyProvider:jollyPosition
+# dr debugDrawing3d:module:LibLiberoProvider:liberoPosition
+# dr debugDrawing3d:module:LibSupporterProvider:supporterPosition
+# dr debugDrawing3d:module:LibDefenderProvider:defenderonePosition
+# dr debugDrawing3d:module:LibDefenderProvider:defendertwoPosition
+
+

@@ -1,0 +1,248 @@
+#!/bin/bash
+
+set -eu
+
+baseDir=$(cd "$(dirname "$(which "$0")")" && pwd)
+bhDir=$(dirname "${baseDir}")
+includeDir="${baseDir}/Include/"
+
+networkDir="${baseDir}/Network"
+profileDir="${networkDir}/Profiles"
+settingsFile="${bhDir}/Config/settings.cfg"
+
+source "${includeDir}/bhumanBase"
+
+robotName=""
+teamID=$(grep <"${settingsFile}" "teamNumber" | sed "s%[^=]*=[ ]*\([0-9]*\).*%\1%")
+robotPart=""
+deleteBeforeWrite=""
+deleteOnly=""
+profilesOnly=""
+ip=""
+head=""
+body=""
+lansubnet="192.168"
+wlansubnet="10.0"
+
+usage() {
+  echo "usage:"
+  echo "${0} [-h]"
+  echo "${0} [-d] [-t <team>] -r <robot> -i <ip> [-l <subnet>] [-w <subnet>] <name>"
+  echo "${0} [-d] [-t <team>] -r <robot> -s <head> -b <body> [-l <subnet>] [-w <subnet>] <name>"
+  echo "${0} -p [-t <team>] -r <robot> [-l <subnet>] [-w <subnet>] <name>"
+  echo "${0} -D <name>"
+  echo ""
+  echo " <name>     : name of the robot"
+  echo " <team>     : the third number of the IPv4 address of the robot (same for all robots)"
+  echo " <robot>    : the last number of the IPv4 address of the robot (different for all robots)"
+  echo " <ip>       : Retrieve serial numbers from the robot with the given ip address"
+  echo " <head>     : Specify serial numbers of the robot's head"
+  echo " <body>     : Specify serial numbers of the robot's body"
+  echo ""
+  echo " -d         : Delete existing files for the given robot before creating new files"
+  echo " -D         : Only delete all files for the given robot"
+  echo " -p         : Only update the network profiles"
+  echo " -l <subnet>: Set lan subnet"
+  echo " -w <subnet>: Set wireless lan subnet"
+  echo " -h         : Display this help"
+  exit 1
+}
+
+parseOptions() {
+  while getopts :hpt:r:Ddi:s:b:l:w: opt ; do
+    case "$opt" in
+      p)
+        profilesOnly="true"
+        ;;
+      t)
+        teamID="$OPTARG"
+        ;;
+      r)
+        robotPart="$OPTARG"
+        ;;
+      d)
+        deleteBeforeWrite="true"
+        ;;
+      D)
+        deleteOnly="true"
+        ;;
+      i)
+        ip="$OPTARG"
+        ;;
+      s)
+        head="$OPTARG"
+        ;;
+      b)
+        body="$OPTARG"
+        ;;
+      l)
+        lansubnet="$OPTARG"
+        ;;
+      w)
+        wlansubnet="$OPTARG"
+        ;;
+      [?]|h)
+        usage
+        ;;
+    esac
+  done
+
+  debug $#
+  debug $OPTIND
+  shift $(($OPTIND-1))
+
+  if ! [ $# -eq 1 ] ; then
+    error "bad number of arguments"
+    usage
+  fi
+
+  robotName=${1}
+
+  if [ -z ${deleteOnly} ]; then
+    if [ -z "${teamID}" -o -z "${robotPart}" -o -z "${robotName}" ]; then
+      usage
+    fi
+  else
+    if [ -n "${robotPart}" -o -z "${robotName}" -o -n "${deleteBeforeWrite}" ]; then
+      usage
+    fi
+    deleteBeforeWrite="true"
+  fi
+
+  debug "robotName: " "${robotName}"
+  debug "teamID: " "${teamID}"
+  debug "robotPart: " "${robotPart}"
+  debug "ip: " "${ip}"
+  debug "head: " "${head}"
+  debug "body: " "${body}"
+  debug "deleteOnly: " "${deleteOnly}"
+  debug "deleteBeforeWrite: " "${deleteBeforeWrite}"
+}
+
+function checkFile()
+{
+  if [ -z "${1:-""}" ]; then
+    debug "No parameter given"
+    return 0
+  fi
+  if [ -e "${1}" ]; then
+    debug "${1} found"
+    if [ -z "${deleteBeforeWrite}" ]; then
+      return 1
+    else
+      debug "Deleting ${1}"
+      rm -rf "${1}"
+      if [ -e "$robotsFile" ]; then
+        grep <"$robotsFile" -v "name *= *\"$robotName\"" \
+        | tr '\n' '|' \
+        | sed -e "s%},|]%}|]%g" -e "s%|*$%%" \
+        | tr '|' '\n' >/tmp/addRobotIds.tmp \
+        && mv /tmp/addRobotIds.tmp "${robotsFile}"
+      fi
+      return 0
+    fi
+  else
+    debug "${1} not found"
+  fi
+}
+
+function checkFiles()
+{
+  foundFiles=""
+  checkFile "${configDir}/Robots/${robotName}" || foundFiles="true"
+  debug "foundFiles: ${foundFiles}"
+
+  if [ -n "${foundFiles}" ]; then
+    error "Found files for robot ${robotName}"
+    fatal "Use -d to cleanup before writing new files"
+  fi
+}
+
+function createCalibrationDirectory()
+{
+  message "Creating calibration directory"
+  mkdir -p "${configDir}/Robots/${robotName}" || return 1
+  return 0
+}
+
+function createNetworkConfig()
+{
+  message "Creating network.cfg"
+cat > "${configDir}/Robots/$robotName/network.cfg" << EOF
+name = "${robotName}";
+lan = "${lansubnet}.${teamID}.${robotPart}";
+wlan = "${wlansubnet}.${teamID}.${robotPart}";
+EOF
+}
+
+function createConnectDialog()
+{
+  message "Updating connectDialog.con"
+  (
+    echo "# This script connects to a remote robot."
+    echo -n "sc Remote \${IP address:"
+    if [ ! -z "$(ls 2>/dev/null "$bhDir"/Config/Robots/*/network.cfg)" ]; then
+      for ip in $(for file in "$bhDir"/Config/Robots/*/network.cfg; do grep "^lan" "$file" | sed -e 's%[^"]*"%%' -e 's%".*%%'; done | sort); do
+        echo -n ",$ip";
+      done
+      for ip in $(for file in "$bhDir"/Config/Robots/*/network.cfg; do grep "^wlan" "$file" | sed -e 's%[^"]*"%%' -e 's%".*%%'; done | sort); do
+        echo -n ",$ip";
+      done
+    fi
+    echo "}"
+  ) >"$bhDir/Config/Scenes/Includes/connectDialog.con"
+}
+
+###############################################################################
+##                                                                           ##
+##  MAIN                                                                     ##
+##                                                                           ##
+###############################################################################
+
+checkApp "sed" "stream editor"
+
+parseOptions "$@"
+
+if [ -n "${profilesOnly}" ]; then
+  if ! [ -d "${configDir}/Robots/${robotName}" ]; then
+    error "Robot '${robotName}' does not exist"
+    fatal "Rerun ${0} without -p"
+  fi
+  if ! createNetworkConfig; then
+    error "Failed to create network configuration"
+    fatal "Rerun ${0} with -d"
+  fi
+else
+  checkFiles
+
+  if [ -n "${deleteOnly}" ]; then
+    message "Successfully deleted all files for ${robotName}"
+    createConnectDialog
+  else
+    if [ -z "$ip$head$body" ]; then
+      fatal "Neither ip nor serial numbers were specified"
+    elif [ ! -z "$ip" ]; then
+      if [ ! -z "$head$body" ]; then
+        fatal "Only either ip or serial numbers can be specified"
+      fi
+    elif [ -z "$head" -o -z "$body" ]; then
+      fatal "Both serial numbers must be specified"
+    fi
+    if ! createCalibrationDirectory; then
+      error "Failed to create calibration directory"
+      fatal "Rerun ${0} with -d"
+    fi
+    if ! createNetworkConfig; then
+      error "Failed to create network configuration"
+      fatal "Rerun ${0} with -d"
+    fi
+    createRobotsFile
+    createConnectDialog
+    message "Created needed files for robot ${robotName}"
+    if [ ! -z "$ip" ]; then
+      source "${includeDir}/addRobotIds" -ip "$ip" "$robotName"
+    else
+      source "${includeDir}/addRobotIds" -ids "$head" "$body" "$robotName"
+    fi
+  fi
+fi

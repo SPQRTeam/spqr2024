@@ -1,0 +1,17 @@
+This is flite version 2.1-release
+
+Download repository from https://github.com/festvox/flite/
+From root:
+
+Linux:
+./configure --with-pic
+make
+make get_voices
+
+NaoV6:
+CFLAGS="-march=silvermont -mtune=silvermont -O2" ./configure
+make
+
+Copy flite/build/<arch>/lib/{libflite, libflite_cmulex, libflite_cmu_us_slt, libflite_usenglish}.a to the corresponding install path
+
+The headers from flite/include can be copied to include

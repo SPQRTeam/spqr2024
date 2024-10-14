@@ -1,0 +1,99 @@
+RobotStatus
+{
+  isPenalized: Boolean
+  isUpright: Boolean
+  hasGroundContact: Boolean
+  // timeWhenLastUpright: Timestamp(bits=8, shift=6, reference=relativePast)
+  // timeOfLastGroundContact: Timestamp(bits=8, shift=6, reference=relativePast)
+  // sequenceNumbers: Integer(min=-1, max=14)[8]    // pingpongato senza essere usato da nessuna parte (e ho controllato, torch2023)
+}
+
+RobotPose
+{
+  rotation: Angle(bits=8)
+  translation: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+  quality: Enum(type=RobotPose::LocalizationQuality)
+  covariance: Matrix<Float(min=-32768, max=32767, bits=16)>(m=3, n=3, symmetric)
+  timestampLastJump: Timestamp(bits=8, shift=7, reference=relativePast, noclip)
+}
+
+BallState
+{
+  position: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+  velocity: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+  covariance: Matrix<Float(min=-32768, max=32767, bits=16)>(m=2, n=2, symmetric)
+}
+
+BallModel
+{
+  lastPerception: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+  estimate: BallState
+  timeWhenLastSeen: Timestamp
+  // timeWhenDisappeared: Timestamp              // lol nope
+  // seenPercentage: Integer(min=0, max=100)     // lol nope
+}
+
+Whistle
+{
+  detectionState: Enum(type=Whistle::DetectionState)
+  lastTimeWhistleDetected: Timestamp(bits=16, reference=relativePast, noclip)
+}
+
+PlayerRole
+{
+  role: Enum(type=PlayerRole::RoleType)
+}
+
+DiscretizedObstacle
+{
+  // covariance: Matrix<Float>(m=2, n=2, symmetric)
+  // center: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+  // left: Vector<Float(min=-32768, max=32767, bits=14)>(n=2)
+  // right: Vector<Float(min=-32768, max=32767, bits=14)>(n=2)
+
+  // covariance: Matrix<Integer>(m=2, n=2, symmetric)
+  // center: Vector<Integer(min=-32768, max=32767)>(n=2)
+  // left: Vector<Integer(min=-32768, max=32767)>(n=2)
+  // right: Vector<Integer(min=-32768, max=32767)>(n=2)
+
+  // covariance: Matrix<Integer>(m=2, n=2, symmetric)
+  // center: Vector<Integer(min=-32768, max=32767)>(n=2)
+
+  // covariance: Matrix<Integer>(m=2, n=2, symmetric)
+  // center: Integer
+  // left: Integer
+  // right: Integer
+
+  // covariance: Matrix<Float(min=-32768, max=32767, bits=16)>(m=2, n=2, symmetric)
+  center: Vector<Float(min=-32768, max=32767, bits=16)>(n=2)
+
+  lastSeen: Timestamp(bits=8, shift=6, reference=relativePast)
+  type: Enum(type=Obstacle::Type)
+}
+
+DiscretizedObstacleModel
+{
+  obstacles: DiscretizedObstacle[:6]
+}
+
+FrameInfo
+{
+  time: Timestamp(bits=8, reference=relativePast)
+}
+
+RefereeEstimator
+{
+  isDetected: Boolean
+}
+
+TeamMessage
+{
+  theRobotStatus: RobotStatus
+  theRobotPose: RobotPose
+  theFrameInfo: FrameInfo
+  theBallModel: BallModel
+  theWhistle: Whistle
+  theDiscretizedObstacleModel: DiscretizedObstacleModel
+  thePlayerRole: PlayerRole
+  theRefereeEstimator: RefereeEstimator
+}

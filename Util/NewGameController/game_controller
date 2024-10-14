@@ -1,0 +1,3 @@
+#!/bin/bash
+basedir="$(cd "$(dirname "$(which "${0}")")" && pwd)"
+exec "${basedir}/target/release/game_controller_app" "$@"

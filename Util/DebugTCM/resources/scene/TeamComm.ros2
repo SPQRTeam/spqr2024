@@ -1,0 +1,82 @@
+<Simulation>
+
+  <Include href="NaoV4H21.rsi2"/>
+  <Include href="Ball2010SPL.rsi2"/>
+  <Include href="FieldsSPL.rsi2"/>
+  <Include href="Obstacle.rsi2"/>
+
+  <Scene>
+    <Body ref="Nao" name="robotBlue" />
+    <Body ref="Nao" name="robotRed">
+      <Set name="NaoColor" value="red"/>
+    </Body>
+    <Body ref="Nao" name="robotBlack">
+      <Set name="NaoColor" value="black"/>
+    </Body>
+    <Body ref="Nao" name="robotYellow">
+      <Set name="NaoColor" value="yellow"/>
+    </Body>
+    <Body ref="Nao" name="robotWhite">
+      <Set name="NaoColor" value="white"/>
+    </Body>
+    <Body ref="Nao" name="robotGreen">
+      <Set name="NaoColor" value="green"/>
+    </Body>
+    <Body ref="Nao" name="robotOrange">
+      <Set name="NaoColor" value="orange"/>
+    </Body>
+    <Body ref="Nao" name="robotPurple">
+      <Set name="NaoColor" value="purple"/>
+    </Body>
+    <Body ref="Nao" name="robotBrown">
+      <Set name="NaoColor" value="brown"/>
+    </Body>
+    <Body ref="Nao" name="robotGray">
+      <Set name="NaoColor" value="gray"/>
+    </Body>
+
+    <Body name="ball" ref="ball">
+      <Translation z="0.0325m" />
+    </Body>
+
+    <Body name="obstacleBlue" ref="obstacleBlue">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstacleBlack" name="obstacleBlack">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstacleRed" name="obstacleRed">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstaclePurple" name="obstaclePurple">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstacleOrange" name="obstacleOrange">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstacleYellow" name="obstacleYellow">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Body ref="obstaclePink" name="obstaclePink">
+      <Translation z="0.0625m" />
+    </Body>
+
+    <Compound name="field">
+      <Compound ref="field" />
+    </Compound>
+
+    <Compound name="field2015">
+      <Compound ref="field2015" />
+    </Compound>
+
+    <Compound name="fieldSmall">
+      <Compound ref="fieldSmall" />
+    </Compound>
+  </Scene>
+</Simulation>
