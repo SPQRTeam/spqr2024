@@ -1,4 +1,4 @@
-# SPQR Team Code used in RoboCup 2024 based on B-Human 2021 Code Release
+# SPQR Team Code used in Shared Autonomy Challenge during RoboCup 2024 based on B-Human 2021 Code Release
 
 # Installation
 
