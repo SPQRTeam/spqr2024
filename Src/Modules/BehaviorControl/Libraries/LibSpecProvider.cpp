@@ -51,9 +51,6 @@ void LibSpecProvider::update(LibSpec& libSpec)
   libSpec.isGoaliePlaying = [this]() -> bool {
     return isGoaliePlaying();
   };
-  libSpec.isTherePassKickoffCondition = [this](Vector2f& target) -> bool {
-    return isTherePassKickoffCondition(target);
-  };
 }
 
 bool LibSpecProvider::compare_obstacles(Vector2f obs1, Vector2f obs2) const{
@@ -141,8 +138,8 @@ Vector2f LibSpecProvider::targetCornerPoint(float angle, float radius) const{
 
 double LibSpecProvider::pointToSegmentDistance(Vector2f A, Vector2f B, Vector2f P) const{
     float angle = theLibMisc.angleBetweenGlobalVectors(A, P, B);
-    float distance_AP = (P - A).norm();
-    float distance_AB = (B - A).norm();
+    float distance_AP = theLibMisc.distanceVec(A, P);
+    float distance_AB = theLibMisc.distanceVec(A, B);
     if(cos(angle) < 0.f || distance_AP*cos(angle) > distance_AB)
       return -1;
     return distance_AP*sin(abs(angle));
@@ -307,10 +304,11 @@ Vector2f LibSpecProvider::nearestPointOnCorridor(const Vector2f start, const Vec
 **    return: 0=most dangerous zone, 1=near dangerous zone, 2=far dangerous zone
 */
 int LibSpecProvider::calcCornerZone(const Vector2f& point) const{
-  if(Geometry::isPointInsideRectangle(Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosLeftPenaltyArea),
-                                      Vector2f(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
-                                      point)
-    )
+
+
+  if(theLibPosition.isPositionInsideRectangle(point,
+                                              Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosLeftPenaltyArea),
+                                              Vector2f(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea)))
       return 0;
   else if(point.x() < (theFieldDimensions.xPosOwnPenaltyArea/2))
       return 1;
@@ -366,21 +364,4 @@ bool LibSpecProvider::isGoaliePlaying() const{
     }
   }
   return false;
-}
-
-bool LibSpecProvider::isTherePassKickoffCondition(Vector2f& passTarget){
-  bool isTherePass = false;
-  for(const Teammate& mate : theTeamData.teammates){
-      if(mate.theRobotPose.translation.x() > -1200.f && mate.theRobotPose.translation.y() > 500.f){
-          isTherePass = true;
-          passTarget = Vector2f(0.f, 1500.f);
-          break;
-      }
-      else if(mate.theRobotPose.translation.x() > -1200.f && mate.theRobotPose.translation.y() < -500.f){
-          isTherePass = true;
-          passTarget = Vector2f(0.f, -1500.f);
-          break;
-      }
-  }
-  return isTherePass;
 }

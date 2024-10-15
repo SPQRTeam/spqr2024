@@ -22,13 +22,30 @@ inline T readVal(const void*& data)
   return *reinterpret_cast<T*&>(data)++;
 }
 
+#if BHUMAN_MESSAGE_INCLUDE_HEADER
+BHumanStandardMessage::BHumanStandardMessage() :
+  version(BHUMAN_STANDARD_MESSAGE_STRUCT_VERSION)
+{
+  const char* init = BHUMAN_STANDARD_MESSAGE_STRUCT_HEADER;
+  for(unsigned int i = 0; i < sizeof(header); ++i)
+    header[i] = init[i];
+}
+#else
 BHumanStandardMessage::BHumanStandardMessage(){}
+#endif
 
 int BHumanStandardMessage::sizeOfBHumanMessage() const
 {
   static_assert(BHUMAN_STANDARD_MESSAGE_STRUCT_VERSION == 13, "This method is not adjusted for the current message version");
 
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+  return sizeof(header)
+         + sizeof(version)
+         + sizeof(magicNumber)
+         + sizeof(timestamp)
+  #else
   return sizeof(timestamp)
+  #endif
          + sizeof(uint32_t) // size of compressedContainer (23 bits), requestsNTPMessage (1 bit), NTP reply bitset (8 bits)
          + static_cast<int>(ntpMessages.size()) * 5
          + static_cast<int>(compressedContainer.size());
@@ -40,6 +57,12 @@ void BHumanStandardMessage::write(void* data) const
 
   const void* const begin = data; //just for length check
 
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+  for(unsigned i = 0; i < sizeof(header); ++i)
+    writeVal<char>(data, header[i]);
+  writeVal<uint8_t>(data, version);
+  writeVal<uint8_t>(data, magicNumber);
+  #endif
   writeVal<uint32_t>(data, timestamp);
 
   static_assert(BHUMAN_STANDARD_MESSAGE_MAX_NUM_OF_PLAYERS == 8, "This code only works for exactly eight robots per team.");
@@ -83,6 +106,20 @@ bool BHumanStandardMessage::read(const void* data)
   const void* const begin = data; //just for length check
 
   ntpMessages.clear();
+
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+
+  for(unsigned i = 0; i < sizeof(header); ++i)
+    if(header[i] != readVal<const char>(data))
+      return false;
+
+  version = readVal<const uint8_t>(data);
+  if(version != BHUMAN_STANDARD_MESSAGE_STRUCT_VERSION)
+    return false;
+
+  magicNumber = readVal<const uint8_t>(data);
+
+  #endif
 
   timestamp = readVal<const uint32_t>(data);
 

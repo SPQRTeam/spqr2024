@@ -96,7 +96,7 @@ class Interceptor2Card : public Interceptor2CardBase
   {
     Vector2f direction = theBallModel.estimate.velocity / theBallModel.estimate.velocity.norm();
     Vector2f intersection = Geometry::getOrthogonalProjectionOfPointOnLine(theFieldBall.recentBallPositionRelative(), direction, Vector2f(0.f, 0.f));
-    if(Geometry::isPointInsideRectangle(theFieldBall.recentBallPositionRelative(), theFieldBall.recentBallEndPositionRelative(), intersection)){
+    if(Geometry::isPointInsideRectangle2(theFieldBall.recentBallPositionRelative(), theFieldBall.recentBallEndPositionRelative(), intersection)){
       
       const float distanceBallToIntersection = (theFieldBall.recentBallPositionRelative() - intersection).norm();
       const float distanceRobotToIntersection = intersection.norm();

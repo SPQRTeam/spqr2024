@@ -63,8 +63,7 @@ STREAMABLE(LibSpec,
 
   FUNCTION(bool()) isGoaliePlaying;
 
-  FUNCTION(bool(Vector2f& passTarget)) isTherePassKickoffCondition;
-  
+
   FUNCTION(Vector2f(const Vector2f robot)) freeKickWall,
 
 });

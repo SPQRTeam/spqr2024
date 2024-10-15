@@ -39,14 +39,14 @@ using namespace Eigen;
 #define PLAYER_ROLES { PlayerRole::RoleType::striker,\
  					   PlayerRole::RoleType::defenderone,\
 					   PlayerRole::RoleType::jolly,\
-					   PlayerRole::RoleType::defendertwo,\
+					   PlayerRole::RoleType::defendertwo,\ 
 					   PlayerRole::RoleType::libero,\
 					   PlayerRole::RoleType::supporter }
 					   
 #define FIXED_PLAYER_ROLES { PlayerRole::RoleType::striker,\
  					   		 PlayerRole::RoleType::defenderone,\
 					   		 PlayerRole::RoleType::striker,\
-					   		 PlayerRole::RoleType::defendertwo,\
+					   		 PlayerRole::RoleType::defendertwo,\ 
 					   		 PlayerRole::RoleType::striker,\
 					   		 PlayerRole::RoleType::striker }
 

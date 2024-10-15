@@ -2,12 +2,15 @@
  * @file SupporterCard.cpp
  *
  * This file implements a basic behavior for the supporter.
+ *
+ * @author Emanuele Antonioni
  */
 
 #include "Representations/BehaviorControl/Skills.h"
-#include "Representations/BehaviorControl/Libraries/LibSupporter.h"
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/BehaviorControl/FieldBall.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
+#include "Representations/BehaviorControl/Libraries/LibSupporter.h"
+#include "Representations/Modeling/RobotPose.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 #include "Tools/Math/BHMath.h"
@@ -22,13 +25,13 @@ CARD(SupporterCard,
   CALLS(LookAtGlobalBall),
   CALLS(ArmObstacleAvoidance),
   CALLS(LookAtBall),
-
-  REQUIRES(LibSupporter),
-  REQUIRES(LibMisc),
   REQUIRES(FieldBall),
-
+  REQUIRES(RobotPose),
+  REQUIRES(LibMisc),
+  REQUIRES(LibSupporter),
   DEFINES_PARAMETERS(
   {,
+    (float)(0.8f) walkSpeed,
     (int)(100) initialWaitTime,
     (int)(5000) ballSeenTimeout,
   }),
@@ -69,13 +72,13 @@ class SupporterCard : public SupporterCardBase
     {
       transition
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibSupporter.supporterPosition.x(), theLibSupporter.supporterPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibSupporter.getSupporterPosition().x(), theLibSupporter.getSupporterPosition().y()).translation;
         if(target.norm() < 200.f) goto turnAndWait;
       }
 
       action
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibSupporter.supporterPosition.x(), theLibSupporter.supporterPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibSupporter.getSupporterPosition().x(), theLibSupporter.getSupporterPosition().y()).translation;
         theWalkToPointSkill(target);
         theArmObstacleAvoidanceSkill();
         if(theFieldBall.timeSinceBallWasSeen < ballSeenTimeout) theLookAtBallSkill();
@@ -87,7 +90,7 @@ class SupporterCard : public SupporterCardBase
     {
       transition
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibSupporter.supporterPosition.x(), theLibSupporter.supporterPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibSupporter.getSupporterPosition().x(), theLibSupporter.getSupporterPosition().y()).translation;
         if(target.norm() > 350.f) goto goToTarget;
       }
 

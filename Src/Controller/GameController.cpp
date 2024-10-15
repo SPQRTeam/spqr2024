@@ -425,7 +425,7 @@ void GameController::placeForPenalty(int robot, float x, float y, float rotation
       ++j;
     if(j == numOfRobots)
     {
-      r.lastPose = GlobalPose2f(rotation, newPos);
+      r.lastPose = Pose2f(rotation, newPos);
       r.simulatedRobot->moveRobot(Vector3f(newPos.x(), newPos.y(), dropHeight), Vector3f(0.f, 0.f, rotation), true);
       break;
     }
@@ -440,11 +440,11 @@ void GameController::placeGoalie(int robot)
   if(r.info.penalty != PENALTY_NONE)
     return;
   r.manuallyPlaced = true;
-  r.lastPose = robot < numOfRobots / 2 ? GlobalPose2f(-pi, fieldDimensions.xPosOpponentGroundLine - safeDistance, 0.f)
-               : GlobalPose2f(0.f, fieldDimensions.xPosOwnGroundLine + safeDistance, 0.f);
+  r.lastPose = robot < numOfRobots / 2 ? Pose2f(-pi, fieldDimensions.xPosOpponentGroundLine - safeDistance, 0.f)
+               : Pose2f(0.f, fieldDimensions.xPosOwnGroundLine + safeDistance, 0.f);
 }
 
-void GameController::placeFromSet(int robot, int minRobot, const GlobalPose2f* poses)
+void GameController::placeFromSet(int robot, int minRobot, const Pose2f* poses)
 {
   // For finding a manual placement pose, it is determined which
   // of the positions would be chosen by our teammates.
@@ -457,7 +457,7 @@ void GameController::placeFromSet(int robot, int minRobot, const GlobalPose2f* p
       int bestPoseIndex = 0;
       for(int j = 0; j < numOfFieldPlayers; ++j)
       {
-        const GlobalPose2f& pose = poses[j];
+        const Pose2f& pose = poses[j];
         const float distanceSqr = (pose.translation - r2.lastPose.translation).squaredNorm();
         if(!occupied[j] && distanceSqr < minDistanceSqr)
         {
@@ -478,19 +478,19 @@ void GameController::placeFromSet(int robot, int minRobot, const GlobalPose2f* p
 
 void GameController::placeOffensivePlayers(int minRobot)
 {
-  static const GlobalPose2f poses[2][numOfFieldPlayers] =
+  static const Pose2f poses[2][numOfFieldPlayers] =
   {
     {
-      GlobalPose2f(0.f, -fieldDimensions.centerCircleRadius - footLength, 0.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, 0.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f)
+      Pose2f(0.f, -fieldDimensions.centerCircleRadius - footLength, 0.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, 0.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f)
     },
     {
-      GlobalPose2f(-pi, fieldDimensions.centerCircleRadius + footLength, 0.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, 0.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f)
+      Pose2f(-pi, fieldDimensions.centerCircleRadius + footLength, 0.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, 0.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f)
     }
   };
 
@@ -507,19 +507,19 @@ void GameController::placeOffensivePlayers(int minRobot)
 
 void GameController::placeDefensivePlayers(int minRobot)
 {
-  static const GlobalPose2f poses[2][numOfFieldPlayers] =
+  static const Pose2f poses[2][numOfFieldPlayers] =
   {
     {
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, 0.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, 0.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
-      GlobalPose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f)
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, 0.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, 0.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
+      Pose2f(0.f, fieldDimensions.xPosOwnPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f)
     },
     {
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, 0.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, 0.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
-      GlobalPose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f)
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, 0.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, 0.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
+      Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f)
     }
   };
 
@@ -752,7 +752,7 @@ void GameController::referee()
     {
       if(gameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
       {
-        GlobalPose2f newPose((i < numOfRobots / 2) ? pi : 0.f, 0.f, 0.f);
+        Pose2f newPose((i < numOfRobots / 2) ? pi : 0.f, 0.f, 0.f);
         if(gameInfo.kickingTeam == (i < numOfRobots / 2 ? 1 : 2))
           newPose.translate(fieldDimensions.xPosPenaltyStrikerStartPosition, 0.f);
         else
@@ -931,7 +931,7 @@ GameController::BallOut GameController::updateBall()
 
 void GameController::setLastBallContactRobot(SimRobot::Object* robot)
 {
-  lastBallContactPose = GlobalPose2f(SimulatedRobot::isFirstTeam(robot) ? pi : 0.f, SimulatedRobot::getPosition(robot));
+  lastBallContactPose = Pose2f(SimulatedRobot::isFirstTeam(robot) ? pi : 0.f, SimulatedRobot::getPosition(robot));
   lastBallContactTime = Time::getCurrentSystemTime();
 }
 
@@ -979,11 +979,11 @@ void GameController::writeRobotInfo(int robot, Out& stream)
 {
   SYNC;
   Robot& r = robots[robot];
-  GlobalPose2f pose;
+  Pose2f pose;
   ASSERT(r.simulatedRobot);
   r.simulatedRobot->getRobotPose(pose);
   if(robot < numOfRobots / 2)
-    pose = GlobalPose2f(pi) + pose;
+    pose = Pose2f(pi) + pose;
   if((pose.translation - r.lastPose.translation).squaredNorm() > sqr(5.f) ||
      std::abs(Angle::normalize(pose.rotation - r.lastPose.rotation)) > 0.05f)
   {

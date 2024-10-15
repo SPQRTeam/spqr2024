@@ -43,8 +43,8 @@ void FieldLinesProvider::update(FieldLines& fieldLines)
 
       const Vector2f corner1(theFieldDimensions.xPosOpponentFieldBorder, theFieldDimensions.yPosLeftFieldBorder - 200);
       const Vector2f corner2(theFieldDimensions.xPosPenaltyStrikerStartPosition / 2, theFieldDimensions.yPosRightFieldBorder - 200);
-      if(!Geometry::isPointInsideRectangle(corner1, corner2, theRobotPose * line.firstField)
-         || !Geometry::isPointInsideRectangle(corner1, corner2, theRobotPose * line.lastField))
+      if(!Geometry::isPointInsideRectangle2(corner1, corner2, theRobotPose * line.firstField)
+         || !Geometry::isPointInsideRectangle2(corner1, corner2, theRobotPose * line.lastField))
       {
         spotLineUsage.push_back(thrown);
         lineIndexTable.push_back(lostIndex);

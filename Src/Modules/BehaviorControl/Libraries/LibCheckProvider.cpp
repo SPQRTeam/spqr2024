@@ -131,20 +131,20 @@ std::string LibCheckProvider::getActivationGraphString(const ActivationGraph& ac
 
 int LibCheckProvider::whichGoalIsTheBallIn() const {
   if(
-    Geometry::isPointInsideRectangle(
+    theLibPosition.isPositionInsideRectangle(
+      theBallModel.estimate.position,
       Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosLeftGoal),
-      Vector2f(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosRightGoal),
-      theBallModel.estimate.position
+      Vector2f(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosRightGoal)
     )
   )
   {
     return -1;
   }
   else if(
-    Geometry::isPointInsideRectangle(
+    theLibPosition.isPositionInsideRectangle(
+      theBallModel.estimate.position,
       Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosLeftGoal),
-      Vector2f(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosRightGoal),
-      theBallModel.estimate.position
+      Vector2f(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosRightGoal)
     )
   )
   {

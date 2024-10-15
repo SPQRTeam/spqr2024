@@ -1,7 +1,9 @@
 /**
  * @file LibLibero.h
  *
- * This file defines a representation that holds the libero position.
+ * This file defines a representation that holds some utilities (primarily) for the libero.
+ *
+ * @author Flavio Volpi
  */
 
 #pragma once
@@ -12,7 +14,10 @@
 
 STREAMABLE(LibLibero,
 {
-  GlobalVector2f liberoPosition; // Target point of the Libero in global coordinates
-
-  , // always put a comma at the end 
+  /** 
+   * Provides the libero reference position
+   */
+  FUNCTION(Vector2f()) getLiberoPosition;
+  FUNCTION(Vector2f()) getLiberoPositionGraph;
+  ,
 });

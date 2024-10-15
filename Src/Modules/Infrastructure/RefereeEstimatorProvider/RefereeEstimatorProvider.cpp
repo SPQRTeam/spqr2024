@@ -1,9 +1,3 @@
-/**
- * @file RefereeEstimatorProvider.cpp
- *
- * @author Filippo Ansalone, Daniele Affinita
- */
-
 #include "RefereeEstimatorProvider.h"
 
 #include "Platform/File.h"
@@ -14,16 +8,28 @@
 #include "Eigen/Dense"
 
 #include <math.h>
+
+#include <iostream>
+
+#include <sstream>
 #include <iomanip>
-#include "Tools/OnnxHelper/OnnxHelper.h"
+
+#include "Platform/SystemCall.h"
 
 RefereeEstimatorProvider::RefereeEstimatorProvider()
 {
   std::string movenetFilename = std::string(File::getBHDir()) + "/Config/NeuralNets/RefereeEstimator/movenet_singlepose_lightning_4.onnx";
   std::string classifierFilename = std::string(File::getBHDir()) + "/Config/NeuralNets/RefereeEstimator/classifier.onnx";
 
-  movenet = new OnnxHelper<int, float>(movenetFilename);
-  classifier = new OnnxHelper<float, float>(classifierFilename);
+  env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "Default"};
+
+  movenetSession = std::make_unique<Ort::Session>(env, movenetFilename.c_str(), Ort::SessionOptions{nullptr});
+  movenetNumInputNodes = movenetSession->GetInputCount();
+  movenetNumOutputNodes = movenetSession->GetOutputCount();
+
+  classifierSession  = std::make_unique<Ort::Session>(env, classifierFilename.c_str(), Ort::SessionOptions{nullptr});
+  classifierNumInputNodes = classifierSession->GetInputCount();
+  classifierNumOutputNodes = classifierSession->GetOutputCount();
 }
 
 void RefereeEstimatorProvider::update(RefereeEstimator& estimator)
@@ -80,14 +86,14 @@ void RefereeEstimatorProvider::update(RefereeEstimator& estimator)
 
   cv::copyMakeBorder(resizedImage, paddedImage, top, bottom, left, right, cv::BorderTypes::BORDER_CONSTANT, 0);
   paddedImage.convertTo(paddedImage, CV_32SC3);
+  std::memcpy(movenetInput.data(), paddedImage.data, 3*input_size*input_size*sizeof(int));
 
-  std::array<float, 51> movenetOutput;
-  movenet->infer(paddedImage.data, movenetOutput.data());
+  Ort::Value inputTensor = Ort::Value::CreateTensor<int>(memory_info, movenetInput.data(), movenetInput.size(), movenetInputShape.data(), movenetInputShape.size());
+  Ort::Value outputTensor = Ort::Value::CreateTensor<float>(memory_info, movenetOutput.data(), movenetOutput.size(), movenetOutputShape.data(), movenetOutputShape.size());
+  drawKeypoints(ROI);
 
-  drawKeypoints(ROI, movenetOutput);
-
-  std::array<float, 4> classifierInput;
-  int num_angles = computeAngles(movenetOutput, classifierInput);
+  movenetSession->Run(Ort::RunOptions{nullptr}, movenetInputNames, &inputTensor, 1, movenetOutputNames, &outputTensor, 1);
+  int num_angles = computeAngles();
 
   if (num_angles < 3){
     estimator.measures = 0;
@@ -95,10 +101,12 @@ void RefereeEstimatorProvider::update(RefereeEstimator& estimator)
     return;
   }
 
-  std::array<float, 1> classifierOutput;
-  classifier->infer(classifierInput.data(), classifierOutput.data());
+  inputTensor = Ort::Value::CreateTensor<float>(memory_info, classifierInput.data(), classifierInput.size(), classifierInputShape.data(), classifierInputShape.size());
+  outputTensor = Ort::Value::CreateTensor<float>(memory_info, classifierOutput.data(), classifierOutput.size(), classifierOutputShape.data(), classifierOutputShape.size());
+  
+  classifierSession->Run(Ort::RunOptions{nullptr}, classifierInputNames, &inputTensor, 1, classifierOutputNames, &outputTensor, 1);
 
-  if (movenetOutput[lefthandy] < movenetOutput[leftshouldery] && movenetOutput[righthandy] < movenetOutput[rightshouldery] && classifierOutput[0] > classifier_threshold){
+  if (movenetOutput.data()[lefthandy] < movenetOutput.data()[leftshouldery] && movenetOutput.data()[righthandy] < movenetOutput.data()[rightshouldery] && classifierOutput[0] > classifier_threshold){
     estimator.measures <<= 1;
     estimator.measures |= 0x1;
     DRAW_TEXT("representation:Referee:image", 0, 50, 50, ColorRGBA::green, "Ready " + std::to_string(estimator.measures));
@@ -113,18 +121,18 @@ void RefereeEstimatorProvider::update(RefereeEstimator& estimator)
   estimator.isDetected = theFrameInfo.getTimeSince(estimator.timeOfLastDetection) < 40000;
 }
 
-int RefereeEstimatorProvider::computeAngles(std::array<float, 51> movenetOutput, std::array<float, 4>& classifierInput){
+int RefereeEstimatorProvider::computeAngles(){
   int angles_count = 0;
   float angle_rad;
   std::stringstream stream;
   for(int i = 0; i < 4; i++){
-    if(movenetOutput[triples[i][0]*3+2] < confidence_threshold || movenetOutput[triples[i][1]*3+2] < confidence_threshold || movenetOutput[triples[i][2]*3+2] < confidence_threshold){
+    if(movenetOutput.data()[triples[i][0]*3+2] < confidence_threshold || movenetOutput.data()[triples[i][1]*3+2] < confidence_threshold || movenetOutput.data()[triples[i][2]*3+2] < confidence_threshold){
       classifierInput[i] = -1.0;
       continue;
     }
-    Eigen::Vector2f kp1(movenetOutput[triples[i][0]*3], movenetOutput[triples[i][0]*3+1]);
-    Eigen::Vector2f kp2(movenetOutput[triples[i][1]*3], movenetOutput[triples[i][1]*3+1]);
-    Eigen::Vector2f kp3(movenetOutput[triples[i][2]*3], movenetOutput[triples[i][2]*3+1]);
+    Eigen::Vector2f kp1(movenetOutput.data()[triples[i][0]*3], movenetOutput.data()[triples[i][0]*3+1]);
+    Eigen::Vector2f kp2(movenetOutput.data()[triples[i][1]*3], movenetOutput.data()[triples[i][1]*3+1]);
+    Eigen::Vector2f kp3(movenetOutput.data()[triples[i][2]*3], movenetOutput.data()[triples[i][2]*3+1]);
 
     Eigen::Vector2f BA = kp1 - kp2;
     Eigen::Vector2f BC = kp3 - kp2;
@@ -144,10 +152,10 @@ int RefereeEstimatorProvider::computeAngles(std::array<float, 51> movenetOutput,
     stream << std::fixed << std::setprecision(3) << angle_rad;
     DRAW_TEXT("representation:Referee:image", x, y, 15, ColorRGBA::blue, stream.str());
   }
-  return angles_count; 
+  return angles_count;
 }
 
-void RefereeEstimatorProvider::drawKeypoints(cv::Rect ROI, std::array<float, 51> movenetOutput){
+void RefereeEstimatorProvider::drawKeypoints(cv::Rect ROI){
   int base_x = ROI.x * 2;
   int base_y = ROI.y;
   float shift_x = ((input_size - ROI.width)/2)/input_size;

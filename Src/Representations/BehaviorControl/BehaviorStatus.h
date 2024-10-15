@@ -19,6 +19,9 @@ STREAMABLE(BehaviorStatus, COMMA public BHumanCompressedMessageParticle<Behavior
 {
   ENUM(Activity,
   {,
+    Controlled,
+    Autonomous,
+
     unknown,
 
     afterInterceptBall,

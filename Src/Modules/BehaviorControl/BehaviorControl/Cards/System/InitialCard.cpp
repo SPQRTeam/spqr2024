@@ -16,6 +16,7 @@ CARD(InitialCard,
   CALLS(LookAtAngles),
   CALLS(Stand),
   REQUIRES(GameInfo),
+  REQUIRES(RawGameInfo),
 });
 
 class InitialCard : public InitialCardBase
@@ -27,7 +28,8 @@ class InitialCard : public InitialCardBase
 
   bool postconditions() const override
   {
-    return theGameInfo.state != STATE_INITIAL;
+    bool exit = theGameInfo.state != STATE_INITIAL;
+    return exit;
   }
 
   void execute() override

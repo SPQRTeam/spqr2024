@@ -1,0 +1,148 @@
+#! /bin/bash
+
+# Usage: ./form <robot no.1> <robot no.2> ... <robot no.N> [-c <args for ./deploy>]
+# Produces: formation.conf file to be read by other scripts, formation.txt file for humans
+
+help()
+{
+    echo "Usage: form <robot no. 1> <robot no. 2> ... <robot no. 7> [-c <args for deploy>]"
+    echo
+    echo "Supported naming conventions for the robots:"
+    echo " - Last byte of the IP: 16, 17, ..., 23"
+    echo " - Imperial name: Augusto, Caligola, ..., Nerone, Ethan, Erika"
+    echo " - Cryptographical/Alphabetical name: Alice, Bob, Carol, David, Eve, Frank, Grace, Heidi"
+    echo " - Alphabetical letter: A, B, ..., H"
+    echo " - Letter correspoding to IP byte: P, Q, ..., W"
+    echo "All names are recognized whether the initial is upper- or lowercase."
+    echo
+    echo "Given formation is saved to formation.conf."
+    echo
+    echo "Use -c (or equivalently -d, --copyfiles, --deploy) to immediately deploy the given formation. Everything that follows the option is given as argument to the deploy script, see its documentaion for details."
+}
+
+# check if arg is help or script was called w/ no arg
+if [[ $1 == "-h" ]] || [[ $1 == "--help" ]] || [ -z $1 ]
+then
+    help
+    exit 0
+fi
+
+FORM_FILE="formation.conf"
+# FORM_HUMAN_FILE="formation.txt"
+FORM_BAK_FILE="formation.conf.BAK"
+
+# custom filename
+if [[ $1 == "-o" ]] || [[ $1 == "--output" ]]
+then
+    shift
+    echo "Selected outfile $1"
+    FORM_FILE="$1"
+    FORM_BAK_FILE="$1.BAK"
+    shift
+fi
+
+if [ -f "$FORM_FILE" ]
+then
+    if [ -f "$FORM_BAK_FILE" ]
+    then
+        rm $FORM_BAK_FILE
+    fi
+    mv $FORM_FILE $FORM_BAK_FILE
+fi
+touch $FORM_FILE
+
+# if [ -f "$FORM_HUMAN_FILE" ]
+# then
+#     rm $FORM_HUMAN_FILE
+# fi
+# touch $FORM_HUMAN_FILE
+
+number=1
+address_prefix=""
+copyfiles_mode=""
+# for arg in "$@"; do
+while true ; do
+    # case $arg in
+    case $1 in
+        "")
+            break
+            ;;
+        0 | 00 | None | none | Noone | noone | Dummy | dummy | Null | null | NULL | "-" | "--")
+            echo "NULL is no. $number"
+            echo "$number -- NULL" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        16 | Augusto | augusto | Alice | alice | A | a | P | p | Tower | tower)
+            echo "Augusto is no. $number"
+            # echo "$number 16" >> $FORM_FILE
+            # echo "$number 16 Augusto" >> $FORM_HUMAN_FILE
+            echo "$number 16 Augusto" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        17 | Caligola | caligola | Bob | bob | B | b | Q | q | Star | star)
+            echo "Caligola is no. $number"
+            # echo "$number 17" >> $FORM_FILE
+            # echo "$number 17 Caligola" >> $FORM_HUMAN_FILE
+            echo "$number 17 Caligola" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        18 | Cesare | cesare | Carol | carol | C | c | R | r | Moon | moon)
+            echo "Cesare is no. $number"
+            # echo "$number 18" >> $FORM_FILE
+            # echo "$number 18 Cesare" >> $FORM_HUMAN_FILE
+            echo "$number 18 Cesare" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        19 | Claudio | claudio | David | david | D | d | S | s | Sun | sun)
+            echo "Claudio is no. $number"
+            # echo "$number 19" >> $FORM_FILE
+            # echo "$number 19 Claudio" >> $FORM_HUMAN_FILE
+            echo "$number 19 Claudio" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        20 | Nerone | nerone | Eve | eve | E | e | T | t | Judgement | judgement)
+            echo "Nerone is no. $number"
+            # echo "$number 20" >> $FORM_FILE
+            # echo "$number 20 Nerone" >> $FORM_HUMAN_FILE
+            echo "$number 20 Nerone" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        21 | Tiberio | tiberio | Frank | frank | F | f | U | u | World | world)
+            echo "Tiberio is no. $number"
+            # echo "$number 21" >> $FORM_FILE
+            # echo "$number 21 Tiberio" >> $FORM_HUMAN_FILE
+            echo "$number 21 Tiberio" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        22 | Ethan | ethan | Grace | grace | G | g | V | v | Fool | fool)  # this is a bit of a stretch...
+            echo "Ethan is no. $number"
+            # echo "$number 22" >> $FORM_FILE
+            # echo "$number 22 Ethan" >> $FORM_HUMAN_FILE
+            echo "$number 22 Ethan" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        23 | Erika | erika | Heidi | heidi | H | h | W | w)  # ...and now we're definitely out of cards :(
+            echo "Erika is no. $number"
+            # echo "$number 23" >> $FORM_FILE
+            # echo "$number 23 Erika" >> $FORM_HUMAN_FILE
+            echo "$number 23 Erika" >> $FORM_FILE
+            (( number += 1 ))
+            ;;
+        -c | --copyfiles | -d | --deploy)
+            shift
+            # echo "Now I'd do deploy with these extra parameters: $@"
+            ./deploy $@
+            break
+            ;;
+        *)
+            printf "  !!!  Unrecogized robot name or option: %s  !!!" $1
+            echo "Use -h to see usage and supported names."
+    esac
+    shift
+
+done
+
+# if [ $do_copyfiles -eq 1 ]
+# then
+#     echo "You asked to do copyfiles"
+# fi

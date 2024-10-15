@@ -3,7 +3,9 @@
  *
  * This file implements a module that detects balls in images with a neural network.
  *
- * @author Daniele Affinita
+ * @author Bernd Poppinga
+ * @author Felix Thielke
+ * @author Gerrit Felsch
  */
 
 #include "BallPerceptorOnnx.h"
@@ -14,102 +16,234 @@
 #include "Tools/Global.h"
 #include "Tools/Math/Projection.h"
 #include "Tools/Math/Transformation.h"
+#include <iostream>
+
+using namespace std;
 
 MAKE_MODULE(BallPerceptorOnnx, perception);
 
-BallPerceptorOnnx::BallPerceptorOnnx() {
-  setup();
+BallPerceptorOnnx::BallPerceptorOnnx()
+{
+  compile();
   shm_unlink(SHM_NAME);
   
   int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR | O_TRUNC, 0666);
   ASSERT(shm_fd != -1);
+
   ftruncate(shm_fd, 1);
+
   shm_ptr = mmap(nullptr, 1, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
   ASSERT(shm_ptr != MAP_FAILED);
 }
 
-void BallPerceptorOnnx::update(BallPercept& theBallPercept) {
+void BallPerceptorOnnx::update(BallPercept& theBallPercept)
+{
   DECLARE_DEBUG_DRAWING("module:BallPerceptorOnnx:spots", "drawingOnImage");
+
+  DEBUG_RESPONSE_ONCE("module:BallPerceptorOnnx:compile")
+    compile();
 
   theBallPercept.status = BallPercept::notSeen;
 
-  const auto& ballSpots = theBallSpots.ballSpots;
-  if(ballSpots.empty()) return;
+  //if(!encoder.valid() || !classifier.valid() || !corrector.valid())
+  //  return;
+
+  const std::vector<Vector2i>& ballSpots = theBallSpots.ballSpots;
+  if(ballSpots.empty())
+    return;
 
   float prob, bestProb = guessedThreshold;
   Vector2f ballPosition, bestBallPosition;
   float radius, bestRadius;
-  for(std::size_t i = 0; i < ballSpots.size(); ++i) {
+  for(std::size_t i = 0; i < ballSpots.size(); ++i)
+  {
     prob = apply(ballSpots[i], ballPosition, radius);
-    COMPLEX_DRAWING("module:BallPerceptorOnnx:spots") {
+
+    COMPLEX_DRAWING("module:BallPerceptorOnnx:spots")
+    {
       std::stringstream ss;
       ss << i << ": " << static_cast<int>(prob * 100);
       DRAW_TEXT("module:BallPerceptorOnnx:spots", ballSpots[i].x(), ballSpots[i].y(), 15, ColorRGBA::red, ss.str());
     }
-    if(prob > bestProb) {
+
+    if(prob > bestProb)
+    {
       bestProb = prob;
       bestBallPosition = ballPosition;
       bestRadius = radius;
-      if(SystemCall::getMode() == SystemCall::physicalRobot && prob >= ensureThreshold) break;
+      if(SystemCall::getMode() == SystemCall::physicalRobot && prob >= ensureThreshold)
+        break;
     }
   }
 
-  if(bestProb > guessedThreshold) {
+  if(bestProb > guessedThreshold)
+  {
     theBallPercept.positionInImage = bestBallPosition;
     theBallPercept.radiusInImage = bestRadius;
-    if(Transformation::imageToRobotHorizontalPlane(theImageCoordinateSystem.toCorrected(bestBallPosition), theBallSpecification.radius, theCameraMatrix, theCameraInfo, theBallPercept.positionOnField)) {
+    if(Transformation::imageToRobotHorizontalPlane(theImageCoordinateSystem.toCorrected(bestBallPosition), theBallSpecification.radius, theCameraMatrix, theCameraInfo, theBallPercept.positionOnField))
+    {
       theBallPercept.status = bestProb >= acceptThreshold ? BallPercept::seen : BallPercept::guessed;
-      *((uint8_t*)shm_ptr) = theBallPercept.status == BallPercept::seen ? 1 : 0;
+
+      if(theBallPercept.status == BallPercept::seen)
+        *((uint8_t*)shm_ptr) = 1;
+      else 
+        *((uint8_t*)shm_ptr) = 0;
+
       return;
     }
-  } else {
+  }
+  else 
     *((uint8_t*)shm_ptr) = 0;
+
+  // Special ball handling for penalty goal keeper
+  if((theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT || (theGameInfo.setPlay == SET_PLAY_PENALTY_KICK && theTeamBehaviorStatus.role.isGoalkeeper()))
+      && theGameInfo.kickingTeam != theOwnTeamInfo.teamNumber && theMotionInfo.executedPhase == MotionPhase::keyframeMotion)
+  {
+    Vector2f inImageLowPoint;
+    Vector2f inImageUpPoint;
+    if(Transformation::robotToImage(theRobotPose.inversePose * Vector2f(theFieldDimensions.xPosOwnGoalArea + 350.f, 0.f), theCameraMatrix, theCameraInfo, inImageLowPoint)
+       && Transformation::robotToImage(theRobotPose.inversePose * Vector2f(theFieldDimensions.xPosOwnPenaltyMark, 0.f), theCameraMatrix, theCameraInfo, inImageUpPoint))
+    {
+      const int lowerY = std::min(static_cast<int>(inImageLowPoint.y()), theCameraInfo.height);
+      const int upperY = std::max(static_cast<int>(inImageUpPoint.y()), 0);
+
+      std::vector<Vector2i> sortedBallSpots = theBallSpots.ballSpots;
+      std::sort(sortedBallSpots.begin(), sortedBallSpots.end(), [&](const Vector2i& a, const Vector2i& b) {return a.y() > b.y(); });
+
+      for(const Vector2i& spot : sortedBallSpots)
+        if(spot.y() < lowerY && spot.y() > upperY)
+        {
+          theBallPercept.positionInImage = spot.cast<float>();
+          if(Transformation::imageToRobot(theImageCoordinateSystem.toCorrected(theBallPercept.positionInImage), theCameraMatrix, theCameraInfo, theBallPercept.positionOnField))
+            theBallPercept.status = BallPercept::seen;
+
+          theBallPercept.radiusInImage = 30.f;
+        }
+    }
   }
 }
 
-float BallPerceptorOnnx::apply(const Vector2i& ballSpot, Vector2f& ballPosition, float& predRadius) {
+float BallPerceptorOnnx::apply(const Vector2i& ballSpot, Vector2f& ballPosition, float& predRadius)
+{
   Vector2f relativePoint;
   Geometry::Circle ball;
-  if(!(Transformation::imageToRobotHorizontalPlane(ballSpot.cast<float>(), theBallSpecification.radius, theCameraMatrix, theCameraInfo, relativePoint) &&
-       Projection::calculateBallInImage(relativePoint, theCameraMatrix, theCameraInfo, theBallSpecification.radius, ball))) {
+  if(!(Transformation::imageToRobotHorizontalPlane(ballSpot.cast<float>(), theBallSpecification.radius, theCameraMatrix, theCameraInfo, relativePoint)
+       && Projection::calculateBallInImage(relativePoint, theCameraMatrix, theCameraInfo, theBallSpecification.radius, ball)))
     return -1.f;
-  }
 
-  int ballArea = (static_cast<int>(ball.radius * ballAreaFactor) + 4) & ~3;
-  RECTANGLE("module:BallPerceptorOnnx:spots", ballSpot.x() - ballArea / 2, ballSpot.y() - ballArea / 2, ballSpot.x() + ballArea / 2, ballSpot.y() + ballArea / 2, 2, Drawings::PenStyle::solidPen, ColorRGBA::black);
+  int ballArea = static_cast<int>(ball.radius * ballAreaFactor);
+  ballArea += 4 - (ballArea % 4);
 
-  const int inputSize = patchSize * patchSize;
-  std::array<float, inputSize> encoder_input_data = {};
+  RECTANGLE("module:BallPerceptorOnnx:spots", static_cast<int>(ballSpot.x() - ballArea / 2), static_cast<int>(ballSpot.y() - ballArea / 2), static_cast<int>(ballSpot.x() + ballArea / 2), static_cast<int>(ballSpot.y() + ballArea / 2), 2, Drawings::PenStyle::solidPen, ColorRGBA::black);
+
+  std::array<float, 32*32> encoder_input_data = {};
   std::array<float, 512> encoder_output_data = {};
-  
+
   STOPWATCH("module:BallPerceptorOnnx:getImageSection")
-  PatchUtilities::extractPatch(ballSpot, Vector2i(ballArea, ballArea), Vector2i(patchSize, patchSize), theECImage.grayscaled, encoder_input_data.data(), extractionMode);
+    if(useFloat)
+    {
+      PatchUtilities::extractPatch(ballSpot, Vector2i(ballArea, ballArea), Vector2i(patchSize, patchSize), theECImage.grayscaled, encoder_input_data.data(), extractionMode);
+      //if(useContrastNormalization)
+        //PatchUtilities::normalizeContrast(encoder_input_data, Vector2i(patchSize, patchSize), contrastNormalizationPercent);
+    }
+    else
+    {
+      PatchUtilities::extractPatch(ballSpot, Vector2i(ballArea, ballArea), Vector2i(patchSize, patchSize), theECImage.grayscaled, encoder_input_data.data(), extractionMode);
+      //if(useContrastNormalization)
+        //PatchUtilities::normalizeContrast(encoder_input_data, Vector2i(patchSize, patchSize), contrastNormalizationPercent);
+    }
+  const float stepSize = static_cast<float>(ballArea) / static_cast<float>(patchSize);
+  //std::cout << "POST extract patch" << std::endl;
 
-  const float stepSize = static_cast<float>(ballArea) / patchSize;
+  Ort::Value inputTensor = Ort::Value::CreateTensor<float>(memory_info, encoder_input_data.data(), 32*32, feature_extractor_input_shape.data(), feature_extractor_input_shape.size());
+  Ort::Value outputTensor = Ort::Value::CreateTensor<float>(memory_info, encoder_output_data.data(), encoder_output_data.size(), feature_extractor_output_shape.data(), feature_extractor_output_shape.size());
 
-  feature_extractor->infer(encoder_input_data.data(), encoder_output_data.data());
+  char * input_name[] = {"input"};
+  char * output_name[] = {"/Reshape_output_0"};
+
+  feature_extractor->Run(Ort::RunOptions{nullptr}, input_name, &inputTensor, 1, output_name, &outputTensor, 1);
 
   std::array<float, 1> classification_output_data = {};
-  classifier->infer(encoder_output_data.data(), classification_output_data.data());
+
+  input_name[0] = output_name[0];
+  output_name[0] = "output_classification";
+
+  inputTensor = Ort::Value::CreateTensor<float>(memory_info, encoder_output_data.data(), encoder_output_data.size(), feature_extractor_output_shape.data(), feature_extractor_output_shape.size());
+  outputTensor = Ort::Value::CreateTensor<float>(memory_info, classification_output_data.data(), classification_output_data.size(), classifier_output_shape.data(), classifier_output_shape.size());
+  classifier->Run(Ort::RunOptions{nullptr}, input_name, &inputTensor, 1, output_name, &outputTensor, 1);
 
   float pred = classification_output_data[0];
-  if(pred > guessedThreshold) {
-    std::array<float, 3> detector_output_data = {};
-    detector->infer(encoder_output_data.data(), detector_output_data.data());
 
-    ballPosition.x() = (detector_output_data[0] - patchSize / 2) * stepSize + ballSpot.x();
-    ballPosition.y() = (detector_output_data[1] - patchSize / 2) * stepSize + ballSpot.y();
-    predRadius = detector_output_data[2] * stepSize;
+  if(pred > guessedThreshold){
+    std::array<float, 3> detector_output_data = {};
+    output_name[0] = "output_detection";
+    outputTensor = Ort::Value::CreateTensor<float>(memory_info, detector_output_data.data(), detector_output_data.size(), detector_output_shape.data(), detector_output_shape.size());
+    detector->Run(Ort::RunOptions{nullptr}, input_name, &inputTensor, 1, output_name, &outputTensor, 1);
+
+    float pred_x = detector_output_data[0];
+    float pred_y = detector_output_data[1];
+    float pred_r = detector_output_data[2];
+
+    ballPosition.x() = (pred_x - patchSize/2) * stepSize + ballSpot.x();
+    ballPosition.y() = (pred_y - patchSize/2) * stepSize + ballSpot.y();
+    predRadius = pred_r * stepSize;
+
   }
 
+  //if(pred > guessedThreshold)
+  //{
+  //  corrector.input(0) = encoder.output(0);
+  //  corrector.apply();
+  //  ballPosition.x() = (corrector.output(0)[0] - patchSize / 2) * stepSize + ballSpot.x();
+  //  ballPosition.y() = (corrector.output(0)[1] - patchSize / 2) * stepSize + ballSpot.y();
+  //  predRadius = corrector.output(0)[2] * stepSize;
+  //}
   return pred;
 }
 
-void BallPerceptorOnnx::setup() {
+void BallPerceptorOnnx::compile()
+{
   const std::string baseDir = std::string(File::getBHDir()) + "/Config/NeuralNets/BallPerceptor/";
   env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "Default"};
 
-  feature_extractor = new OnnxHelper<float, float>(baseDir + encoderName);
-  classifier = new OnnxHelper<float, float>(baseDir + classifierName);
-  detector = new OnnxHelper<float, float>(baseDir + correctorName);
+  std::string feature_extractor_name = baseDir + encoderName;
+  std::string classifier_name = baseDir + classifierName;
+  std::string detector_name = baseDir + correctorName;
+
+
+  feature_extractor = std::make_unique<Ort::Session>(env, feature_extractor_name.c_str(), Ort::SessionOptions{nullptr});
+  classifier = std::make_unique<Ort::Session>(env, classifier_name.c_str(), Ort::SessionOptions{nullptr});
+  detector = std::make_unique<Ort::Session>(env, detector_name.c_str(), Ort::SessionOptions{nullptr});
+
+  // movenetNumInputNodes = movenetSession->GetInputCount();
+  // movenetNumOutputNodes = movenetSession->GetOutputCount();
+
+
+  // TODO: hande this in a decent way
+  ASSERT(!useFloat);
+  //if(!useFloat)
+  //  encModel->setInputUInt8(0);
+
+  ASSERT(feature_extractor->GetInputCount() == 1);
+  ASSERT(classifier->GetInputCount() == 1);
+  ASSERT(detector->GetInputCount() == 1);
+
+  ASSERT(feature_extractor->GetOutputCount() == 1);
+  ASSERT(classifier->GetOutputCount() == 1);
+  ASSERT(detector->GetOutputCount() == 1);
+
+  //ASSERT(encoder.input(0).rank() == 3);
+  //ASSERT(encoder.input(0).dims(0) == encoder.input(0).dims(1));
+  //ASSERT(encoder.input(0).dims(2) == 1);
+
+  //ASSERT(classifier.output(0).rank() == 1);
+  //ASSERT(classifier.output(0).dims(0) == 1 && corrector.output(0).dims(0) == 3);
+
+  Ort::TypeInfo input_info = feature_extractor->GetInputTypeInfo(0);
+  auto input_tensor_info = input_info.GetTensorTypeAndShapeInfo();
+  
+  //patchSize = input_tensor_info.GetShape()[1];
+  // TODO: smonnezza
+  patchSize = 32;
 }

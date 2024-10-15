@@ -18,11 +18,29 @@
 void BallModel::operator>>(BHumanMessage& m) const
 {
   Streaming::streamIt(*m.theBHumanStandardMessage.out, "theBallModel",  *this);
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  m.theBSPLStandardMessage.ball[0] = estimate.position.x();
+  m.theBSPLStandardMessage.ball[1] = estimate.position.y();
+
+  if(timeWhenLastSeen && Blackboard::getInstance().exists("FrameInfo"))
+  {
+    const FrameInfo& theFrameInfo = static_cast<const FrameInfo&>(Blackboard::getInstance()["FrameInfo"]);
+    m.theBSPLStandardMessage.ballAge = theFrameInfo.getTimeSince(timeWhenLastSeen) / 1000.f;
+  }
+  else
+    m.theBSPLStandardMessage.ballAge = -1.f;
+  #endif
 }
 
 void BallModel::operator<<(const BHumanMessage& m)
 {
   Streaming::streamIt(*m.theBHumanStandardMessage.in, "theBallModel", *this);
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  estimate.position.x() = m.theBSPLStandardMessage.ball[0];
+  estimate.position.y() = m.theBSPLStandardMessage.ball[1];
+  #endif
 }
 
 void BallModel::verify() const

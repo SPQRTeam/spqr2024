@@ -9,7 +9,6 @@
 
 #include "Representations/Communication/TeamData.h"
 #include "Representations/Communication/GameInfo.h"
-#include "Representations/Communication/TeamInfo.h"
 #include "Representations/Configuration/KickInfo.h"
 
 #include "Representations/spqr_representations/GameState.h"
@@ -55,7 +54,6 @@ CARD(FreeKickStrikerCard,
   REQUIRES(LibObstacles),
   REQUIRES(TeamData),
   REQUIRES(LibPass),
-  REQUIRES(OwnTeamInfo),
 
   DEFINES_PARAMETERS(
   {,
@@ -70,14 +68,13 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
 {
   bool preconditions() const override
   {
-     return (theGameInfo.state == STATE_PLAYING && 
-            theGameInfo.setPlay != SET_PLAY_NONE) ||
-            theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT;
+     return theGameInfo.state == STATE_PLAYING && 
+            theGameInfo.setPlay != SET_PLAY_NONE;
   }
 
   bool postconditions() const override
   {
-     return theGameInfo.setPlay == SET_PLAY_NONE || theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT;
+     return theGameInfo.setPlay == SET_PLAY_NONE;
   }
 
   Vector2f ballPositionAtLastTargetChoice;
@@ -92,12 +89,9 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
     {
       transition
       {
-          if(theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT && theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber){
-            goto ownPenaltyKick;
-          }         
           switch(theGameState.state)
           {
-            
+
             // ADV: Opponent Penalty Kick is 
             //      managed through OpponentKickOffCard
             
@@ -138,8 +132,8 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
         bool ballSeen = theFieldBall.ballWasSeen(time_when_last_seen);
 
         //Returns a position for the striker in a defensive kick in configuration
-        Vector2f strikerPos = theLibStriker.strikerPosition;
-        LocalPose2f position = theLibMisc.glob2Rel(strikerPos.x(),strikerPos.y());
+        Vector2f strikerPos = theLibStriker.getStrikerPosition(ballSeen);
+        Pose2f position = theLibMisc.glob2Rel(strikerPos.x(),strikerPos.y());
 
         //Robot needs a pose, in order to orient the body towards the ball
         Pose2f targetPose = Pose2f(theLibMisc.angleToBall,position.translation);
@@ -162,15 +156,15 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
           // std::cout << "x: " << std::to_string(target.x()) << "    y: "<< std::to_string(target.y()) << std::endl;
 
           float utility   = std::get<1>(theLibPass.getBestPassageSpecial());
-          float distance = (theRobotPose.translation - target).norm();
-          KickInfo::KickType kickType = theLibStriker.getWalkKick(target);
+          float distance = theLibMisc.distance(target, theRobotPose);
+          KickInfo::KickType kickType = theLibPass.getKickType(target);
 
-          theGoToBallAndKickSkill(theLibMisc.angleToTarget(target), kickType, true, distance);
+          theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(target), kickType, true, distance);
 
         }
         else{
           ballPositionAtLastTargetChoice = MAGIC_VECTOR;
-          theGoToBallAndDribbleSkill(theLibMisc.angleToTarget(theLibStriker.strikerDribblePoint));
+          theGoToBallAndDribbleSkill(theLibMisc.calcAngleToTarget(theLibStriker.strikerMovementPoint()));
         }
         
       }
@@ -181,7 +175,7 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
       action
       {
         bool ballSeen = theFieldBall.ballWasSeen(time_when_last_seen);
-        Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.strikerPosition.x(), theLibStriker.strikerPosition.y()).translation;
+        Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.getStrikerPosition(ballSeen).x(), theLibStriker.getStrikerPosition(ballSeen).y()).translation;
         theWalkToPointSkill(target_point);
         theLookAtBallSkill();
         /* ToDo
@@ -201,20 +195,16 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
       
         if(best_angle<=0.34){ // 20° ToTest 
           //std::cout << best_angle << " --> BASE" << std::endl;
-          (theFieldBall.recentBallPositionOnField().y() > 0) ? 
-            theGoToBallAndKickSkill(theLibMisc.angleToTarget(Vector2f(theFieldDimensions.xPosOpponentGroundLine-1000, theFieldDimensions.yPosLeftSideline-1000)), KickInfo::walkForwardsRight, true, 600.0f, true, false): //ToTest the Length
-            theGoToBallAndKickSkill(theLibMisc.angleToTarget(Vector2f(theFieldDimensions.xPosOpponentGroundLine-1000, theFieldDimensions.yPosRightSideline+1000)), KickInfo::walkForwardsRight, true, 600.0f, true, false); //ToTest the Length
+          (theTeamBallModel.position[1] > 0) ? 
+            theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(Vector2f(theFieldDimensions.xPosOpponentGroundLine-1000, theFieldDimensions.yPosLeftSideline-1000)), KickInfo::walkForwardsRight, true, 600.0f, true, false): //ToTest the Length
+            theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(Vector2f(theFieldDimensions.xPosOpponentGroundLine-1000, theFieldDimensions.yPosRightSideline+1000)), KickInfo::walkForwardsRight, true, 600.0f, true, false); //ToTest the Length
         }
         else{
           //std::cout << best_angle << " --> STEP" << std::endl;
-          (theFieldBall.recentBallPositionOnField().y() > 0) ? 
-            theGoToBallAndKickSkill(theLibMisc.angleToTarget(theLibSpec.targetCornerPoint(angle_to_kick, radius)), KickInfo::forwardFastLeft, true, 3000.0f, true, false): //ToTest the length
-            theGoToBallAndKickSkill(theLibMisc.angleToTarget(theLibSpec.targetCornerPoint(angle_to_kick, radius)), KickInfo::forwardFastRight, true, 3000.0f, true, false); //ToTest the length
+          (theTeamBallModel.position[1] > 0) ? 
+            theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(theLibSpec.targetCornerPoint(angle_to_kick, radius)), KickInfo::walkForwardsLeftLong, true, 3000.0f, true, false): //ToTest the length
+            theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(theLibSpec.targetCornerPoint(angle_to_kick, radius)), KickInfo::walkForwardsRightLong, true, 3000.0f, true, false); //ToTest the length
         } 
-
-        // bool isLeft = theFieldBall.recentBallPositionOnField().y() > 0;
-        // Vector2f target = Vector2f(theFieldDimensions.xPosOpponentPenaltyMark+200, 0.f);
-        // theGoToBallAndKickSkill(theLibMisc.angleToTarget(target), isLeft ? KickInfo::KickType::forwardFastLeft : KickInfo::KickType::forwardFastRight, true, 2500);
       }
     }
 
@@ -229,9 +219,10 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
     {
       action{
         // TODO: change target
-        Vector2f target = Vector2f(theFieldDimensions.xPosOpponentGroundLine, 350.f);
-        Angle angle = theLibMisc.angleToTarget(target);
-        theGoToBallAndKickSkill(angle, KickInfo::KickType::forwardFastRight, true);
+        Vector2f target = Vector2f(theFieldDimensions.xPosOpponentGroundLine, -300.f);
+        Angle angle = theLibMisc.calcAngleToTarget(target);
+        KickInfo::KickType kicktype = state_time < 2000 ? KickInfo::KickType::ottoMetriLeftKick : KickInfo::KickType::ottoMetriLooseLeftKick;
+        theGoToBallAndKickSkill(angle, KickInfo::KickType::ottoMetriLeftKick);
       }
     }
 
@@ -240,8 +231,8 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
       
       action{
         bool ballSeen = theFieldBall.ballWasSeen(time_when_last_seen);
-        Vector2f target_glob =  theLibStriker.strikerPosition;
-        LocalPose2f target_loc = theLibMisc.glob2Rel(target_glob.x(), target_glob.y());
+        Vector2f target_glob =  theLibStriker.getStrikerPosition(ballSeen);
+        Pose2f target_loc = theLibMisc.glob2Rel(target_glob.x(), target_glob.y());
         theWalkToPointSkill(target_loc);
         theLookAtBallSkill();
       }
@@ -260,15 +251,15 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
           // std::cout << "x: " << std::to_string(target.x()) << "    y: "<< std::to_string(target.y()) << std::endl;
 
           float utility   = std::get<1>(theLibPass.getBestPassageSpecial());
-          float distance = (theRobotPose.translation - target).norm();
-          KickInfo::KickType kickType = theLibStriker.getWalkKick(target);
+          float distance = theLibMisc.distance(target, theRobotPose);
+          KickInfo::KickType kickType = theLibPass.getKickType(target);
 
-          theGoToBallAndKickSkill(theLibMisc.angleToTarget(target), kickType, true, distance);
+          theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(target), kickType, true, distance);
 
         }
         else{
           ballPositionAtLastTargetChoice = MAGIC_VECTOR;
-          theGoToBallAndDribbleSkill(theLibMisc.angleToTarget(theLibStriker.strikerDribblePoint));
+          theGoToBallAndDribbleSkill(theLibMisc.calcAngleToTarget(theLibStriker.strikerMovementPoint()));
         }
         
       }
@@ -278,7 +269,7 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
       action
       {
         bool ballSeen = theFieldBall.ballWasSeen(time_when_last_seen);
-        Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.strikerPosition.x(), theLibStriker.strikerPosition.y()).translation;
+        Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.getStrikerPosition(ballSeen).x(), theLibStriker.getStrikerPosition(ballSeen).y()).translation;
         theWalkToPointSkill(target_point);
         theLookAtBallSkill();
         /* ToDo
@@ -292,7 +283,7 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
       {
         if(theLibSpec.isGoaliePlaying()){
           bool ballSeen = theFieldBall.ballWasSeen(time_when_last_seen);
-          Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.strikerPosition.x(), theLibStriker.strikerPosition.y()).translation;
+          Vector2f target_point = theLibMisc.glob2Rel(theLibStriker.getStrikerPosition(ballSeen).x(), theLibStriker.getStrikerPosition(ballSeen).y()).translation;
           theWalkToPointSkill(target_point);
           theLookForwardSkill();
         }
@@ -303,6 +294,7 @@ class FreeKickStrikerCard : public FreeKickStrikerCardBase
           Angle direction = (theRobotPose.inversePose * target).angle();
           theGoToBallAndKickSkill(direction, KickInfo::KickType::forwardFastRightLong);
         }
+
       }
     }
   }

@@ -49,20 +49,16 @@ void DebugStandardMessage::read(In& stream)
   STREAM(role);
   STREAM(currentObsSize);
   STREAM(obsTypes);
-  STREAM(obsCenters);
+  STREAM(obsCenterX);
+  STREAM(obsCenterY);
   STREAM(obsLastSeen);
   STREAM(messageBudget);
   STREAM(secsRemaining);
   STREAM(armContact);
   STREAM(armPushDirection);
   STREAM(armTimeOfLastContact);
-  STREAM(timeSinceLastWhistleDetection);
-  STREAM(whistleDetectionState);
   STREAM(teamBall);
   STREAM(teamBallVel);
-  STREAM(batteryLevel);
-  STREAM(cpuTemperature);
-  STREAM(refereeDetection);
 }
 
 void DebugStandardMessage::write(Out& stream) const
@@ -80,20 +76,16 @@ void DebugStandardMessage::write(Out& stream) const
   STREAM(role);
   STREAM(currentObsSize);
   STREAM(obsTypes);
-  STREAM(obsCenters);
+  STREAM(obsCenterX);
+  STREAM(obsCenterY);
   STREAM(obsLastSeen);
   STREAM(messageBudget);
   STREAM(secsRemaining);
   STREAM(armContact);
   STREAM(armPushDirection);
   STREAM(armTimeOfLastContact);
-  STREAM(timeSinceLastWhistleDetection);
-  STREAM(whistleDetectionState);
   STREAM(teamBall);
   STREAM(teamBallVel);
-  STREAM(batteryLevel);
-  STREAM(cpuTemperature);
-  STREAM(refereeDetection);
 }
 
 void DebugStandardMessage::reg()
@@ -112,18 +104,14 @@ void DebugStandardMessage::reg()
   REG(role);
   REG(currentObsSize);
   REG(obsTypes);
-  REG(obsCenters);
+  REG(obsCenterX);
+  REG(obsCenterY);
   REG(obsLastSeen);
   REG(messageBudget);
   REG(secsRemaining);
   REG(armContact);
   REG(armPushDirection);
   REG(armTimeOfLastContact);
-  REG(timeSinceLastWhistleDetection);
-  REG(whistleDetectionState);
   REG(teamBall);
   REG(teamBallVel);
-  REG(batteryLevel);
-  REG(cpuTemperature);
-  REG(refereeDetection);
 }

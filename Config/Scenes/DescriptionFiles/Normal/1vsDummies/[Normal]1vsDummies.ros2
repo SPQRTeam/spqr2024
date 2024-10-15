@@ -9,8 +9,8 @@
     <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
 
     <Compound name="teamColors">
-        <Appearance name="red"/>
-        <Appearance name="blue"/>
+      <Appearance name="red"/>
+      <Appearance name="blue"/>
     </Compound>
 
     <Compound ref="robots"/>

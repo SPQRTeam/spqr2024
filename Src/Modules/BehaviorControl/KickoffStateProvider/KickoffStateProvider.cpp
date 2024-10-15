@@ -32,8 +32,7 @@ void KickoffStateProvider::update(KickoffState& kickoffState)
   if(theGameInfo.setPlay == SET_PLAY_PENALTY_KICK)
     ballWasOutOfCenterCircle = true;
 
-  // const bool robotIsCloseToCenterCircle = theRobotPose.translation.norm() < theFieldDimensions.centerCircleRadius + robotOutOfCenterCircleTolerance;
-  const bool robotIsCloseToCenterCircle = theRobotPose.translation.x() > -1000;
+  const bool robotIsCloseToCenterCircle = theRobotPose.translation.norm() < theFieldDimensions.centerCircleRadius + robotOutOfCenterCircleTolerance;
 
   // BallWasOutOfCenterCircle
   if(!ballWasOutOfCenterCircle)
@@ -107,10 +106,6 @@ void KickoffStateProvider::update(KickoffState& kickoffState)
   }
   kickoffState.allowedToEnterCenterCircle = allowedToEnterCenterCircle();
   kickoffState.allowedToScore = allowedToScore();
-  kickoffState.ballWasOutOfCenterCircle = ballWasOutOfCenterCircle;
-  kickoffState.isKickoff = theGameInfo.state == STATE_PLAYING &&
-                           theExtendedGameInfo.timeSincePlayingStarted < opponentKickoffMaxTime &&
-                           !ballWasOutOfCenterCircle;
 }
 
 void KickoffStateProvider::reset()

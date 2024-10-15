@@ -8,12 +8,19 @@ vfd worldState fieldPolygons
 vfd worldState representation:RobotPose
 vfd worldState representation:FieldBall:global
 
+# views relative to robot
+#vfd worldState cognition:RobotPose
+#vfd worldState representation:BallModel:endPosition
+#vfd worldState representation:BallModel
+#vfd worldState representation:MotionRequest
+#vfd worldState representation:ObstacleModel:rectangle
+#vfd worldState representation:FieldBall:relative
+
 dr debugDrawing3d:representation:RobotInfo
 dr debugDrawing3d:representation:RobotPose
 
-# dr debugDrawing3d:module:LibStrikerProvider:strikerPosition
-# dr debugDrawing3d:module:LibJollyProvider:jollyPosition
-# dr debugDrawing3d:module:LibLiberoProvider:liberoPosition
-# dr debugDrawing3d:module:LibSupporterProvider:supporterPosition
-# dr debugDrawing3d:module:LibDefenderProvider:defenderonePosition
-# dr debugDrawing3d:module:LibDefenderProvider:defendertwoPosition
+# dr debugDrawing3d:module:LibStrikerProvider:strikerDribblePoint
+# dr debugDrawing3d:module:LibStrikerProvider:strikerDribblePointVerbose
+# dr debugDrawing3d:module:PathPlannerProvider:path
+# dr debugDrawing3d:module:PathPlannerProvider:obstacles
+# dr debugDrawing3d:behavior:LibWalkProvider:obstacles3D

@@ -136,9 +136,9 @@ namespace Geometry
   float distance(const Vector2f& point1, const Vector2f& point2);
   float distance(const Vector2i& point1, const Vector2i& point2);
 
-  // [[nodiscard]] bool isPointInsideRectangle(const Vector2f& bottomLeftCorner, const Vector2f& topRightCorner, const Vector2f& point);
-  // [[nodiscard]] bool isPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, const Vector2i& point);
-  [[nodiscard]] bool isPointInsideRectangle(const Vector2f& corner1, const Vector2f& corner2, const Vector2f& point);
+  [[nodiscard]] bool isPointInsideRectangle(const Vector2f& bottomLeftCorner, const Vector2f& topRightCorner, const Vector2f& point);
+  [[nodiscard]] bool isPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, const Vector2i& point);
+  [[nodiscard]] bool isPointInsideRectangle2(const Vector2f& corner1, const Vector2f& corner2, const Vector2f& point);
   [[nodiscard]] bool isPointInsideRectangle(const Rect& rect, const Vector2f& point);
   [[nodiscard]] bool isPointInsideConvexPolygon(const Vector2f polygon[], const int numberOfPoints, const Vector2f& point);
   [[nodiscard]] bool isPointInsidePolygon(const Vector3f& point, const std::vector<Vector3f>& V);

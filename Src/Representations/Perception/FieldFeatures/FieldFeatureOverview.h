@@ -10,10 +10,12 @@
 #include "Tools/Communication/BHumanTeamMessageParts/BHumanMessageParticle.h"
 #include "Tools/Streams/EnumIndexedArray.h"
 
-// Used to be sent over arbitrary message, but not anymore as of 2023.
-// See any version of our (SPQR) code during RoboCup 2024 to recover communication code.
-STREAMABLE(FieldFeatureOverview,
+STREAMABLE(FieldFeatureOverview, COMMA public PureBHumanArbitraryMessageParticle<idFieldFeatureOverview>
 {
+  /** BHumanMessageParticle functions */
+  void operator>>(BHumanMessage& m) const override;
+  bool handleArbitraryMessage(InMessage& m, const std::function<unsigned(unsigned)>& toLocalTimestamp) override;
+
   ENUM(Feature,
   {,
     penaltyArea,

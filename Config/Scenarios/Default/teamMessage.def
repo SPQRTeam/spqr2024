@@ -86,6 +86,14 @@ RefereeEstimator
   isDetected: Boolean
 }
 
+HumanCommand
+{
+  commandBody: Enum(type=HumanCommand::CommandBody)
+  strategy: Enum(type=HumanCommand::Strategy)
+  x: Float(min=-5000, max=5000, bits=8)
+  y: Float(min=-5000, max=5000, bits=8)
+}
+
 TeamMessage
 {
   theRobotStatus: RobotStatus
@@ -96,4 +104,5 @@ TeamMessage
   theDiscretizedObstacleModel: DiscretizedObstacleModel
   thePlayerRole: PlayerRole
   theRefereeEstimator: RefereeEstimator
+  theHumanCommand: HumanCommand
 }

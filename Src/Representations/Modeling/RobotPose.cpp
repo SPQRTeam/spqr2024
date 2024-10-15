@@ -26,11 +26,23 @@ void RobotPose::onRead()
 void RobotPose::operator>>(BHumanMessage& m) const
 {
   Streaming::streamIt(*m.theBHumanStandardMessage.out, "theRobotPose", *this);
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  m.theBSPLStandardMessage.pose[0] = translation.x();
+  m.theBSPLStandardMessage.pose[1] = translation.y();
+  m.theBSPLStandardMessage.pose[2] = rotation;
+  #endif
 }
 
 void RobotPose::operator<<(const BHumanMessage& m)
 {
   Streaming::streamIt(*m.theBHumanStandardMessage.in, "theRobotPose", *this);
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  translation.x() = m.theBSPLStandardMessage.pose[0];
+  translation.y() = m.theBSPLStandardMessage.pose[1];
+  rotation = m.theBSPLStandardMessage.pose[2];
+  #endif
 
   inversePose = static_cast<Pose2f>(*this).inverse();
 }

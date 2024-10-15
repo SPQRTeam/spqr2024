@@ -30,7 +30,6 @@ CARD(SearcherActiveCard,
     CALLS(LookForward),
     CALLS(LookAtPoint),
     CALLS(LookAtAngles),
-    CALLS(LookForScan),
 
     USES(LibMisc),
     REQUIRES(PlayerRole),
@@ -85,7 +84,7 @@ class SearcherActiveCard : public SearcherActiveCardBase
         {
             transition
             {
-                if((theRobotPose.translation-currentTarget).norm() < 2*theSearcherModel.cellLengthX){
+                if(theLibMisc.distance(theRobotPose.translation, currentTarget) < 2*theSearcherModel.cellLengthX){
                     goto turnAround;
                 }
             }
@@ -93,13 +92,14 @@ class SearcherActiveCard : public SearcherActiveCardBase
             action
             {  
                 // hysteresis
-                if(theFrameInfo.getTimeSince(lastPositionUpdateTime) > HYSTERESIS_TIME || (theRobotPose.translation-currentTarget).norm() < HYSTERESIS_DISTANCE){
+                if(theFrameInfo.getTimeSince(lastPositionUpdateTime) > HYSTERESIS_TIME || theLibMisc.distance(theRobotPose.translation, currentTarget) < HYSTERESIS_DISTANCE){
                     currentTarget = theLibSearcher.getActiveSearcherPosition();
                     lastPositionUpdateTime = theFrameInfo.time;
                 }
 
                 theWalkToPointSkill(theLibMisc.glob2Rel(currentTarget.x(), currentTarget.y()), 0.7f);
-                theLookForScanSkill(180_deg);
+                //theLookLeftAndRightSkill(true, 50_deg, 23_deg, 80_deg);
+                theLookAtAnglesSkill(0_deg, 50_deg, 90_deg);
             }
         }
 
@@ -107,7 +107,7 @@ class SearcherActiveCard : public SearcherActiveCardBase
         {
             transition
             {
-                if((theRobotPose.translation-currentTarget).norm() > 2*theSearcherModel.cellLengthX)
+                if(theLibMisc.distance(theRobotPose.translation, currentTarget) > 2*theSearcherModel.cellLengthX)
                     goto searchToTarget;
             }
 
@@ -117,7 +117,7 @@ class SearcherActiveCard : public SearcherActiveCardBase
                 currentTarget = theLibSearcher.getActiveSearcherPosition();
                 lastPositionUpdateTime = theFrameInfo.time;
                 theLookForwardSkill();
-                if(theLibMisc.angleToTarget(currentTarget) > 0)
+                if(theLibMisc.angleToTarget(currentTarget.x(), currentTarget.y()) > 0)
                 {
                     turn_direction = 1.f;
                 }

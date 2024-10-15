@@ -72,8 +72,12 @@ public class SPLTeamMessageReceiverTCM extends SPLTeamMessageReceiver {
         final Class<? extends SPLTeamMessage> c = PluginLoader.getInstance().getMessageClass(p.team);
     
         //EB
-        // check src/teamcomm//data/GameState.java 
-    
+
+        // ByteBuffer debugPack = ByteBuffer.wrap(p.message).order(ByteOrder.LITTLE_ENDIAN);
+        
+        //debugPack.position(8); // the received message has 8 strange bytes before the real debug packet
+
+        //System.out.println("name: "    + p.host.substring(p.host.lastIndexOf(".") + 1));
         System.out.println("Length: "+ p.message.length);
 
         //EB

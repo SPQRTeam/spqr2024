@@ -205,12 +205,6 @@ namespace spqr {
                 max_x_graph = std::max(node_position.x(), max_x_graph);
                 max_y_graph = std::max(node_position.y(), max_y_graph);
             }
-            
-            //* This fix is needed to avoid the jolly and libero too close to the opponent kick-in
-            if(max_y_graph == 2200) max_y_graph = 3100;
-            if(min_y_graph == -2200) min_y_graph = -3100;
-
-
             Vector2f bottom_left = Vector2f(min_x_graph, max_y_graph);
             Vector2f top_right = Vector2f(max_x_graph, min_y_graph);
             return Geometry::isPointInsideRectangle(bottom_left, top_right, position);

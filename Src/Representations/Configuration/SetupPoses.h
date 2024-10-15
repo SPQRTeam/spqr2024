@@ -37,19 +37,24 @@ STREAMABLE(SetupPoses,
    *  @param number The player number (starting with 1, as the real number)
    *  @return A reference to the pose for setup
    */
-  const SetupPose& getPoseOfRobot(int number) const,
+  const SetupPose& getPoseOfRobot(int number, bool weAreAttacking) const,
 
-  (std::vector<SetupPose>) poses, /*< A list of all available robot poses, not ordered by number */
+  (std::vector<SetupPose>) attackingPoses, /*< A list of all available robot poses, not ordered by number */
+  (std::vector<SetupPose>) defendingPoses,
 });
 
-inline const SetupPoses::SetupPose& SetupPoses::getPoseOfRobot(int number) const
+inline const SetupPoses::SetupPose& SetupPoses::getPoseOfRobot(int number, bool weAreAttacking) const
 {
-  ASSERT(poses.size() > 0);
-  if(poses.size() == 1)
-    return poses[0];
-  for(const auto& pose : poses)
-    if(pose.playerNumber == number)
-      return pose;
+  if(weAreAttacking){
+    for(const auto& pose : attackingPoses)
+      if(pose.playerNumber == number)
+        return pose;
+    return attackingPoses[0]; // Dummy line to avoid compiler complaints
+  } else {
+    for(const auto& pose : defendingPoses)
+      if(pose.playerNumber == number)
+        return pose;
+    return defendingPoses[0]; // Dummy line to avoid compiler complaints
+  }
   FAIL("No setup pose for player " << number << ".");
-  return poses[0]; // Dummy line to avoid compiler complaints
 }

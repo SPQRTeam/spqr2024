@@ -22,6 +22,13 @@ public:
     calibration,
   });
 
+  ENUM(RoleNumber,
+  {,
+    none,
+    autonomous,
+    controlled,
+  });
+
   int number; /**< The number of the robot. */
 
   Mode mode; /**< The current mode. */

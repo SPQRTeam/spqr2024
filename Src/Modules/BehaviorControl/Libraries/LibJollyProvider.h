@@ -1,22 +1,33 @@
 /**
  * @file LibJollyProvider.h
  * 
- * This file defines a module that computes the jolly position.
+ * See LibJolly
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
 
-#include "Representations/BehaviorControl/Libraries/LibJolly.h"
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
-#include "Representations/BehaviorControl/Libraries/LibPass.h"
-#include "Representations/BehaviorControl/PlayerRole.h"
-#include "Representations/BehaviorControl/FieldBall.h"
-#include "Representations/BehaviorControl/Libraries/LibSpec.h"
+#include <algorithm>
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Modeling/TeamPlayersModel.h"
+#include "Representations/Communication/TeamData.h"
+#include "Representations/Communication/BHumanMessage.h"
+#include "Representations/Communication/MessageManagement.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
+#include "Representations/BehaviorControl/Libraries/LibJolly.h"
+#include "Representations/BehaviorControl/Libraries/LibStriker.h"
+#include "Representations/BehaviorControl/Libraries/LibPass.h"
+#include "Representations/BehaviorControl/FieldBall.h"
+#include "Representations/BehaviorControl/Libraries/LibSpec.h"
+#include "Representations/Communication/GameInfo.h"   
+#include "Representations/spqr_representations/GameState.h"   
+#include "Representations/Communication/TeamInfo.h"
 #include "Representations/Communication/RobotInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/spqr_representations/GameState.h"   
+#include "Modules/spqr_modules/ContextCoordinator/newCoordinator.h"
 #include "Platform/File.h"
 #include "Tools/Module/Module.h"
 #include "Tools/SpqrTools/Graph.h"
@@ -25,60 +36,53 @@
 
 MODULE(LibJollyProvider,
 {,
-  REQUIRES(LibMisc),
-  REQUIRES(LibPass),
-  REQUIRES(FieldBall),
-  REQUIRES(LibSpec),
   REQUIRES(RobotPose),
   REQUIRES(FieldDimensions),
+  REQUIRES(TeamBallModel),
+  REQUIRES(TeamPlayersModel),
+  REQUIRES(TeamData),
+  REQUIRES(LibMisc),
+  REQUIRES(FieldBall),
+  REQUIRES(LibSpec),
+  REQUIRES(GameInfo),
+  REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
+  REQUIRES(LibStriker),
+  REQUIRES(BHumanMessageOutputGenerator),
+  REQUIRES(MessageManagement),
   REQUIRES(FrameInfo),
+  REQUIRES(LibPass),
   REQUIRES(GameState),
-  USES(PlayerRole),
   PROVIDES(LibJolly),
-  LOADS_PARAMETERS(
-  {,
-    (float) hysteresis_utility, // Hysteresis for the utility of the nodes, to avoid oscillations.
-    (float) hysteresis_time,    // Time to wait before changing the target again.
-  }),
+  // LOADS_PARAMETERS(
+  // {,
+  //   // nothing for now!
+  // }),
 });
 
 class LibJollyProvider : public LibJollyProviderBase
 {
 private:
-  spqr::UndirectedGraph jollyPositionGraph,             // Graph of the jolly position (left on the field, looking at the opponent goal)
-                        centralPositionGraph;           // Graph of the central position (center of the field)
+  spqr::UndirectedGraph jollyPositionGraph, 
+                        centralPositionGraph;
   
-  GlobalVector2f current_target;                        // Current target of the jolly (a node of the graph)
-  unsigned last_time_modified_node = theFrameInfo.time; // Last time the target was changed (used for the hysteresis)
+  Vector2f* current_target;
+  float hysteresis_utility = 0.1;
+  float hysteresis_time = 10000;
+  unsigned last_time_modified_node = theFrameInfo.time;
   
   /**
-   * @brief Updates the LibJolly representation
-   * 
-   * @param libJolly The LibJolly representation to update
+   * Updates LibJolly
+   * @param libJolly The representation provided
    */
   void update(LibJolly& libJolly) override;
 
-  /**
-   * @brief Computes the jolly position (global coordinates)
-   * 
-   * @return [GlobalVector2f] The jolly position
+  /** 
+   * Provides the jolly reference position
    */
-  GlobalVector2f getJollyPosition();
-  
-  /**
-   * @brief Computes the jolly position in the graph (global coordinates)
-   * 
-   * @return [GlobalVector2f] The jolly position in the graph
-   */
-  GlobalVector2f getJollyPositionGraph();
-  
-  /**
-   * @brief Computes the jolly position in freeKick situations (global coordinates)
-   * 
-   * @return [GlobalVector2f] The jolly position in special cases
-   */
-  GlobalVector2f getJollyPositionSpecial();
+  Vector2f getJollyPosition();
+  Vector2f getJollyPositionGraph();
+  Vector2f getJollyPositionSpecial();
 
 public:
   LibJollyProvider();

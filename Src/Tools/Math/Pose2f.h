@@ -4,7 +4,6 @@
 #include "Eigen.h"
 #include "Random.h"
 #include "Tools/Range.h"
-#include "Tools/Meta/StrongTypedef.h"
 
 STREAMABLE(Pose2f,
 {
@@ -219,11 +218,3 @@ inline Pose2f Pose2f::random(const Rangef& angle, const Rangef& x, const Rangef&
 {
   return Pose2f(Random::uniform(angle.min, angle.max), Vector2f(Random::uniform(x.min, x.max), Random::uniform(y.min, y.max)));
 }
-
-STRONG_TYPEDEF(LocalPose2f, Pose2f)
-STRONG_TYPEDEF(GlobalPose2f, Pose2f)
-
-// -0xDEADBEEF corresponds to a large number (6.2598534e18)
-#define InvalidLocalPose2f LocalPose2f(-0xDEADBEEF,-0xDEADBEEF,0)
-#define InvalidGlobalPose2f GlobalPose2f(-0xDEADBEEF,-0xDEADBEEF,0)
-

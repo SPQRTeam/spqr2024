@@ -362,28 +362,24 @@ public class GameState implements GameControlDataEventListener {
 
         //EB
 
-        // Process the Received Message:
-        // Each comment specifies: [initial byte, final byte]
-
         ByteBuffer debugPack = ByteBuffer.wrap(message.data).order(ByteOrder.LITTLE_ENDIAN);
-        
-        debugPack.position(12); // skip 8 bytes and header [0, 11]
+        //System.out.println("pos1: " + debugPack.position());
+        debugPack.position(12); // skip 8 bytes and header 
+        //System.out.println("pos2: " + debugPack.position());
+        r.lastGCRDMessage = new GameControlReturnData();
 
-        r.lastGCRDMessage = new GameControlReturnData(); // Debug Message 
-
-        r.lastGCRDMessage.version  = debugPack.get(); // [12]
-        r.lastGCRDMessage.playerNum = debugPack.get(); // [13]
-        r.lastGCRDMessage.teamNum  = debugPack.get() ; // [14]
+        r.lastGCRDMessage.version  = debugPack.get();// 12
+        r.lastGCRDMessage.playerNum = debugPack.get();// 13
+        r.lastGCRDMessage.teamNum  = debugPack.get() ;// 14
         r.playerNumber = Integer.valueOf(r.lastGCRDMessage.playerNum);
         r.teamNumber = Integer.valueOf(r.lastGCRDMessage.teamNum);
-        r.lastGCRDMessage.fallen = debugPack.get() != 0; // [15]
-        r.lastGCRDMessage.pose[0] = debugPack.getFloat(); // [16, 19]
-        r.lastGCRDMessage.pose[1] = debugPack.getFloat(); // [20, 23]
-        r.lastGCRDMessage.pose[2] = debugPack.getFloat(); // [24, 27]
-        r.lastGCRDMessage.ballAge = debugPack.getFloat(); // [28, 31]
-        r.lastGCRDMessage.ball[0] = debugPack.getFloat(); // [32, 35]
-        r.lastGCRDMessage.ball[1] = debugPack.getFloat(); // [36, 39]
-
+        r.lastGCRDMessage.fallen = debugPack.get() != 0;// 15
+        r.lastGCRDMessage.pose[0] = debugPack.getFloat();// 19
+        r.lastGCRDMessage.pose[1] = debugPack.getFloat();// 23
+        r.lastGCRDMessage.pose[2] = debugPack.getFloat();// 27
+        r.lastGCRDMessage.ballAge = debugPack.getFloat();// 31
+        r.lastGCRDMessage.ball[0] = debugPack.getFloat();// 35
+        r.lastGCRDMessage.ball[1] = debugPack.getFloat();// 39
         r.lastGCRDMessage.valid = true;
         r.lastGCRDMessage.headerValid = true;
         r.lastGCRDMessage.versionValid = true;
@@ -393,102 +389,143 @@ public class GameState implements GameControlDataEventListener {
         r.lastGCRDMessage.poseValid = true;
         r.lastGCRDMessage.ballValid = true;
 
-        System.out.println("Name: "+ address.substring(address.lastIndexOf(".") + 1));
-        System.out.println("PlayerNum: "+ r.playerNumber);
-        System.out.println("TeamNum: "+ r.teamNumber);
-        System.out.println("fallen: "+ r.lastGCRDMessage.fallen);
-        System.out.println("robPosition X: "+ r.lastGCRDMessage.pose[0]);
-        System.out.println("robPosition Y: "+ r.lastGCRDMessage.pose[1]);
-        System.out.println("robPosition Theta: "+ r.lastGCRDMessage.pose[2]);
-        System.out.println("ballAge: "+ r.lastGCRDMessage.ballAge);
-        System.out.println("ballPosition X: "+ r.lastGCRDMessage.ball[0]);
-        System.out.println("ballPosition Y: "+ r.lastGCRDMessage.ball[1]);
-        System.out.println("NumOfDataBytes: "+ debugPack.getShort()); // [40, 41]
-        r.role = RobotState.Role.values()[debugPack.get()]; // [42]
-        System.out.println("Role: " + r.role);
-        int CurrentObsNum = debugPack.get(); // current number of obstacles [43]
+        System.out.println("name: "    + address.substring(address.lastIndexOf(".") + 1));
+        System.out.println("Version: "    + r.lastGCRDMessage.version);
+        System.out.println("PlayerNum: "        + r.playerNumber);
+        System.out.println("TeamNum: "          + r.teamNumber);
+        System.out.println("fallen: "           + r.lastGCRDMessage.fallen);
+        System.out.println("robPosition 0: "    + r.lastGCRDMessage.pose[0]);
+        System.out.println("robPosition 1: "    + r.lastGCRDMessage.pose[1]);
+        System.out.println("robPosition 2: "    + r.lastGCRDMessage.pose[2]);
+        System.out.println("ballAge: "          + r.lastGCRDMessage.ballAge);
+        System.out.println("ballPosition 0: "   + r.lastGCRDMessage.ball[0]);
+        System.out.println("ballPosition 1: "   + r.lastGCRDMessage.ball[1]);
+        // comments may be wrong since I have changed NumOfDataBytes type from uint8_t to uint16_t and now it's placed before role
+        System.out.println("NumOfDataBytes: "   + debugPack.getShort()); // 41
+        r.role = RobotState.Role.values()[debugPack.get()]; // 42
+        System.out.println("role: "             + r.role);
+
+        int CurrentObsNum = debugPack.get(); // current number of obstacles 42
+        // you don't need any padding before reading the obstacles
         System.out.println("CurrentObsNum: " + CurrentObsNum);
+
+        // System.out.println("-----------preObs-----------");
 
         if (CurrentObsNum > Obstacle.MAX_OBS_SIZE) {
             CurrentObsNum = Obstacle.MAX_OBS_SIZE;
         }
 
-        // these variables are useful for the alignment at byte level
-        int MaxObsNum = Obstacle.MAX_OBS_SIZE; // set to 20
-        int typeSize = 1; // obsTypes = 1 bytes (uint8_t)
-        int centerSize = 8; // obsCenters = 8 bytes (2 float)
-        int lastSeenSize = 4; // obsLastSeen = 4 bytes (unsigned int)
-
         if(CurrentObsNum > 0) {
+            // System.out.println("-----------inside-----------");
             // get types, centers, left and right of each obstacle
+            int MaxObsNum = Obstacle.MAX_OBS_SIZE;
+            // System.out.println("pos1: " + debugPack.position());
 
-            int padding = (((debugPack.position() + MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + MaxObsNum) % 4); // 0 pad
-            int[] obsTypes = new int[CurrentObsNum];  // [44, 44 + CurrentObsNum - 1]
+            // 43 + 6
+            int padding = (((debugPack.position() + MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + MaxObsNum) % 4); // 3
+            // System.out.println("pad1: " + padding);
+            int[] obsTypes = new int[CurrentObsNum];
             for(int i = 0; i < CurrentObsNum; i++) {
                 obsTypes[i] = debugPack.get();
             }
-            debugPack.position(debugPack.position() + MaxObsNum - CurrentObsNum + padding); // [44 + CurrentObsNum - 1, 44 + MaxObsNum(20) + padding - 1] = [44 + CurrentObsNum - 1, 63]
-            
-            padding = (((debugPack.position() + centerSize*MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + centerSize*MaxObsNum) % 4); // 0 pad
-            float[][] obsCenters = new float[CurrentObsNum][2]; // [64, 64 + centerSize*CurrentObsNum - 1]
-            for(int j = 0; j < CurrentObsNum; j++) {
-                obsCenters[j][0] = debugPack.getFloat(); // x
-                obsCenters[j][1] = debugPack.getFloat(); // y
-            }
-            debugPack.position(debugPack.position() + centerSize*(MaxObsNum - CurrentObsNum) + padding); // [64 + centerSize*CurrentObsNum - 1, 64 + centerSize*MaxObsNum + padding - 1] = [64 + centerSize*CurrentObsNum - 1, 223]
+            // 45 ( Current = 2 )
+            // System.out.println("pos2: " + debugPack.position());
+            debugPack.position(debugPack.position() + MaxObsNum - CurrentObsNum + padding); //jump over the empty position and padding (if you have any)
+            // 52
+            // System.out.println("pos3: " + debugPack.position());
+            padding = (((debugPack.position() + 2*4*MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + 2*4*MaxObsNum) % 4);// 0
+            // System.out.println("pad2: " + padding);
+            ///////// giusto
 
-            int[] obsLastSeen = new int[CurrentObsNum]; // [224, 224 + lastSeenSize*CurrentObsNum -1]
+            float[][] obsCenters = new float[CurrentObsNum][2];
+            for(int j = 0; j < 2*CurrentObsNum; j++) {
+                // System.out.println("j: " + j);
+                if (j % 2 == 0 ) {
+                    obsCenters[j/2][0] = debugPack.getFloat(); // x
+                    //System.out.println("X: " + obsCenters[j/2][0]);
+                }
+                else {
+                    obsCenters[j/2][1] = debugPack.getFloat(); // y
+                    //System.out.println("Y: " + obsCenters[j/2][1]);
+                    //System.out.println("pos8: " + debugPack.position());
+                }
+            }
+            // 56 + 2*4*2 + 0 = 68
+            // System.out.println("pos4: " + debugPack.position());
+            debugPack.position(debugPack.position() + 8*(MaxObsNum - CurrentObsNum) + padding); //jump over the empty position and padding (if you have any)
+            // 68 + 32 + 0 = 100
+            // System.out.println("pos5: " + debugPack.position());
+
+            int[] obsLastSeen = new int[CurrentObsNum];
             for(int j = 0; j < CurrentObsNum; j++) {
                 obsLastSeen[j] = debugPack.getInt();
             }
+            // 100 + 4*2 = 108
+            // System.out.println("pos6: " + debugPack.position());
             r.seenObstacles.clear();
-            padding = (((debugPack.position() + lastSeenSize*MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + lastSeenSize*MaxObsNum) % 4); // 0 pad
+            // 108 + 4*6 % 4 = 0
+            padding = (((debugPack.position() + 4*MaxObsNum) % 4) == 0) ? 0 : 4 - ((debugPack.position() + 4*MaxObsNum) % 4);
+            // System.out.println("pad3: " + padding);
             for(int i = 0; i<CurrentObsNum; i++) {
                 Obstacle obs = new Obstacle(obsTypes[i], obsCenters[i], obsLastSeen[i]);
                 System.out.println(obs.toString());
                 r.seenObstacles.add(obs); // add to list of seen obstacles
             }
-            debugPack.position(debugPack.position() + lastSeenSize*(MaxObsNum - CurrentObsNum) + padding); // [224 + lastSeenSize*CurrentObsNum - 1, 224 + lastSeenSize*MaxObsNum + padding - 1] = [224 + lastSeenSize*CurrentObsNum - 1, 303]
+            // 108 + 4*4 + 0 = 124
+            debugPack.position(debugPack.position() + 4*(MaxObsNum - CurrentObsNum) + padding); //jump over the empty position and padding (if you have any)
+            
         }
         else {
             // if you change something on the structure of the message then you will have to change this accordingly!
-            // if you don't have any obstacles information then you have to skip all the bytes related to them :
-            debugPack.position(debugPack.position() + MaxObsNum*(typeSize + centerSize + lastSeenSize)); // [44, 303]
-        }  
+            debugPack.position(debugPack.position() + Obstacle.MAX_OBS_SIZE*(1 + 4 + 8)); // Types(1B), Centers(4B), lastSeen(4B)
+        }
 
-        // message budget and secsRemaining
-        short messageBudget = debugPack.getShort(); // [304, 305]
+        short messageBudget = debugPack.getShort();
         System.out.println("Budget: "+messageBudget);
-        short secsRemaining = debugPack.getShort(); // [306, 307]
+        //System.out.println("-----------secs-----------");
+        short secsRemaining = debugPack.getShort();
         System.out.println("SecsRemaining: "+secsRemaining);
+        //System.out.println("pos8: " + debugPack.position()); // 126
 
         // extract Arm Contact
-        boolean armContact = ((debugPack.get() == 1) || (debugPack.get() == 1)); // [308], [309]
-        int armPush1 = debugPack.get(); // [310]
-        int armPush2 = debugPack.get(); // [311]
-        int lastArmContact1 = debugPack.getInt(); // [312, 315]
-        int lastArmContact2 = debugPack.getInt(); // [316, 319]
+        boolean armContact = ((debugPack.get() == 1) || (debugPack.get() == 1));// 128
+        //System.out.println("pos9: " + debugPack.position());
+        int armPush1 = debugPack.get();// 129
+        //System.out.println("pos10: " + debugPack.position());
+        int armPush2 = debugPack.get();// 130 
+        //System.out.println("pos11: " + debugPack.position());
+
+        int lastArmContact1 = debugPack.getInt(); // 134
+        //System.out.println("pos12: " + debugPack.position());
+        int lastArmContact2 = debugPack.getInt(); // 138
+        //System.out.println("pos13: " + debugPack.position());
+
         if(lastArmContact1 < lastArmContact2) {
             r.currentContact = new Contact(armContact, armPush1, lastArmContact1);
         }
         else {
             r.currentContact = new Contact(armContact, armPush2, lastArmContact2);
         }
-        System.out.println(r.currentContact.toString()); 
+        // System.out.println("-----------arm-----------");
+        System.out.println(r.currentContact.toString());
 
-        // whistle
-        r.lastWhistleDetection = debugPack.getInt(); // [320, 323]
-        r.whistleDetected = RobotState.WhistleDetector.values()[debugPack.get()]; // [324]
+        r.lastWhistleDetection = debugPack.getInt();
+
+        r.whistleDetected = RobotState.WhistleDetector.values()[debugPack.get()];
+
         System.out.println("Whistle detected: "+r.whistleDetected+ " since: "+r.lastWhistleDetection);
-        debugPack.position(debugPack.position() + 3); // [325, 327] if you change something on the structure of the message then you will have to change this accordingly!
 
-        // teamBall
-        r.TeamBallPos[0] = debugPack.getFloat(); // [328, 331]
-        r.TeamBallPos[1] = debugPack.getFloat(); // [332, 335]
-        r.TeamBallVel[0] = debugPack.getFloat(); // [336, 339]
-        r.TeamBallVel[1] = debugPack.getFloat(); // [340, 343]
+        debugPack.position(debugPack.position() + 3);
+
+        r.TeamBallPos[0] = debugPack.getFloat();
+        r.TeamBallPos[1] = debugPack.getFloat();
+
+        r.TeamBallVel[0] = debugPack.getFloat();
+        r.TeamBallVel[1] = debugPack.getFloat();
+
         System.out.println("TeamBallPos: "+r.TeamBallPos[0]+" , "+r.TeamBallPos[1]);
         System.out.println("TeamBallVel: "+r.TeamBallVel[0]+" , "+r.TeamBallVel[1]);
+
         if (Float.isNaN(r.TeamBallPos[0]) || Float.isNaN(r.TeamBallPos[1]) || Float.isNaN(r.TeamBallVel[0]) || Float.isNaN(r.TeamBallVel[1])) {
             // Ready position problem
             r.TeamBallPos[0] = 0;
@@ -497,14 +534,15 @@ public class GameState implements GameControlDataEventListener {
             r.TeamBallVel[1] = 0;
         }
 
-        // battery level and cpu temperature
-        r.batteryLevel = debugPack.getFloat() * 100; // % [344, 347]
-        r.cpuTemperature = debugPack.getFloat(); // °C [348, 351]
+        r.batteryLevel = debugPack.getFloat() * 100; //  %
+        r.cpuTemperature = debugPack.getFloat(); // °C
+
         System.out.println("Battery Level: "+r.batteryLevel+" , Temperature: "+r.cpuTemperature);
 
-        // refereePose
-        r.refereePose = debugPack.get() != 0; // [352]
+        r.refereePose = debugPack.get() != 0;
+
         System.out.println("Referee Pose: "+r.refereePose);
+
 
         System.out.println("-----------------------");
         //EB

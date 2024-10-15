@@ -7,14 +7,12 @@
  */
 
 #include "Representations/BehaviorControl/Skills.h"
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/BehaviorControl/TeamBehaviorStatus.h"
 #include "Representations/Communication/GameInfo.h"
 #include "Representations/Communication/TeamInfo.h"
 #include "Representations/Configuration/BallSpecification.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/TeamBallModel.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 
 CARD(SetCard,
@@ -24,15 +22,12 @@ CARD(SetCard,
   CALLS(LookAtPoint),
   CALLS(LookForward),
   CALLS(Stand),
-  CALLS(LookAtGlobalBall),
   REQUIRES(BallSpecification),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(TeamBehaviorStatus),
-  REQUIRES(TeamBallModel),
-  REQUIRES(LibMisc),
 });
 
 class SetCard : public SetCardBase
@@ -59,15 +54,8 @@ class SetCard : public SetCardBase
                                      Vector2f::Zero();
       theLookAtPointSkill((Vector3f() << theRobotPose.inversePose * targetOnField, theBallSpecification.radius).finished());
     }
-    else if(theTeamBallModel.isValid){
-      theLookAtGlobalBallSkill();
-    }
-    else{
-      // auto target = theRobotPose.inversePose * Vector2f(0.f,0.f);
-      // theLookAtPointSkill(target);
-      theLookAtPointSkill((Vector3f() << theRobotPose.inversePose * Vector2f::Zero(), theBallSpecification.radius).finished());
-    }
-      // theLookActiveSkill(/* withBall: */ false, /* ignoreBall: */ true);
+    else
+      theLookActiveSkill(/* withBall: */ false, /* ignoreBall: */ true);
     theStandSkill(/* high: */ true);
   }
 };

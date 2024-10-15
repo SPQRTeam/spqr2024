@@ -6,18 +6,26 @@
  * @author Emanuele Antonioni
  */
 
+#include "Representations/Modeling/RobotPose.h"
+#include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/BehaviorControl/FieldBall.h"
 #include "Representations/BehaviorControl/Skills.h"
 #include "Representations/BehaviorControl/Libraries/LibStriker.h"
-#include "Representations/BehaviorControl/FieldBall.h"
 #include "Representations/BehaviorControl/Libraries/LibObstacles.h"
-#include "Representations/BehaviorControl/Libraries/LibPass.h"
+#include "Representations/BehaviorControl/Libraries/LibDefender.h"
 #include "Representations/BehaviorControl/Libraries/LibMisc.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/OpponentGoalModel.h"
-#include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Configuration/KickInfo.h"
+#include "Representations/BehaviorControl/Libraries/LibPass.h"
+#include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Communication/TeamData.h"
 #include "Representations/spqr_representations/GameState.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
+#include "Representations/BehaviorControl/PathPlanner.h"
+#include "Representations/Modeling/ObstacleModel.h"
+#include "Representations/Modeling/OpponentGoalModel.h"
+#include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Modeling/TeamPlayersModel.h"
+#include "Representations/Communication/TeamInfo.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
 #include "Tools/Math/BHMath.h"
 #include "Tools/Debugging/Debugging.h"
@@ -26,28 +34,50 @@
 CARD(BasicStrikerCard,
 {,
   CALLS(Activity),
-  CALLS(Stand),
-  CALLS(LookForward),
   CALLS(GoToBallAndKick),
   CALLS(GoToBallAndDribble),
+  CALLS(LookForward),
+  CALLS(Stand),
+  CALLS(WalkAtRelativeSpeed),
+  CALLS(Dribble),
+  CALLS(LookActive),
+  CALLS(LookAtBall),
+  CALLS(WalkToBallAndKick),
+  CALLS(WalkPotentialField),
+  CALLS(LookAtGlobalBall),
+  CALLS(Say),
+  CALLS(WalkToPoint),
   CALLS(ArmObstacleAvoidance),
 
-  REQUIRES(LibStriker),
-  REQUIRES(FieldBall),
-  REQUIRES(LibObstacles),
   REQUIRES(LibMisc),
-  REQUIRES(LibPass),
-  REQUIRES(RobotPose),
   REQUIRES(OpponentGoalModel),
+  REQUIRES(RobotPose),
   REQUIRES(FieldDimensions),
+  REQUIRES(FieldBall),
+  REQUIRES(LibStriker),
+  REQUIRES(LibObstacles),
+  USES(LibDefender),
+  REQUIRES(LibPass),
+  REQUIRES(FrameInfo),
+  REQUIRES(TeamData),
   REQUIRES(GameState),
+  REQUIRES(ObstacleModel),
+  REQUIRES(PathPlanner),
+  REQUIRES(BallModel),
+  REQUIRES(TeamBallModel),
+  REQUIRES(TeamPlayersModel),
+  REQUIRES(OwnTeamInfo),
   DEFINES_PARAMETERS(
   {,
+    (float)(0.8f) walkSpeed,
     (int)(100) initialWaitTime,
+    (int)(7000) ballNotSeenTimeout,
     (float)(80) kickIntervalThreshold,
     (float)(0.5) shouldPassThreshold,
   }),
 });
+
+Vector2f MAGIC_VECTOR = Vector2f(-9999, -9999);
 
 class BasicStrikerCard : public BasicStrikerCardBase
 {
@@ -61,11 +91,11 @@ class BasicStrikerCard : public BasicStrikerCardBase
     return true;
   }
 
-  GlobalVector2f kickTarget;
-  KickInfo::KickType kickType;
-  GlobalVector2f ballPositionAtLastTargetChoice;
-  bool doItASAP;
-  GlobalVector2f passTarget;
+  Vector2f chosenTarget;
+  KickInfo::KickType chosenKickType;
+  bool chosenDoItAsap;
+  Vector2f ballPositionAtLastTargetChoice;
+  Vector2f passTarget;
 
   option
   {
@@ -80,7 +110,7 @@ class BasicStrikerCard : public BasicStrikerCardBase
 
       action
       {
-        ballPositionAtLastTargetChoice = InvalidGlobalVector2f;
+        ballPositionAtLastTargetChoice = MAGIC_VECTOR;
         theLookForwardSkill();
         theStandSkill();
       }
@@ -100,9 +130,9 @@ class BasicStrikerCard : public BasicStrikerCardBase
 
       action
       {
-        ballPositionAtLastTargetChoice = InvalidGlobalVector2f;
+        ballPositionAtLastTargetChoice = MAGIC_VECTOR;
         theArmObstacleAvoidanceSkill();
-        theGoToBallAndDribbleSkill(theLibMisc.angleToTarget(theLibStriker.strikerDribblePoint), false, 0.7);
+        theGoToBallAndDribbleSkill(theLibMisc.calcAngleToTarget(theLibStriker.strikerDribblePoint()), false, 0.7);
       }
     }
 
@@ -116,24 +146,27 @@ class BasicStrikerCard : public BasicStrikerCardBase
 
       action
       {
-        Vector2f ballRobotVector = theFieldBall.positionOnFieldClipped - theRobotPose.translation;
 
-        // Choose the target point for the kick
-        if (state_time < 200 ||                                                              // If the goToBallAndKick state has just started
-            ballRobotVector.norm() > 300 ||                                                  // If the ball is far from the robot
-            (theFieldBall.positionOnField - ballPositionAtLastTargetChoice).norm() > 500) // If the ball has moved a lot since the last target choice
-          {
-          
-          Vector2f ballGoalVector = theFieldBall.positionOnFieldClipped - Vector2f(theFieldDimensions.xPosOpponentPenaltyMark, 0);
-          bool kickRight = ballRobotVector.dot(ballGoalVector.rotate(-pi_2)) < 0;
-          
-          doItASAP = theLibObstacles.nearestOpponent().translation.norm() < 750.f;
-          kickType = theLibStriker.getKick(doItASAP, kickRight);
-          kickTarget = theLibStriker.goalTarget(doItASAP, true);
+        Vector2f ballRobotv = theFieldBall.positionOnFieldClipped - theRobotPose.translation;
+
+        if (state_time < 200 || ballRobotv.norm() > 300 || (theFieldBall.positionOnField - ballPositionAtLastTargetChoice).norm() > 500) {
+          chosenDoItAsap = theLibObstacles.nearestOpponent().translation.norm() < 750.f && false;
+
+          Vector2f ballGoalv = theFieldBall.positionOnFieldClipped - Vector2f(theFieldDimensions.xPosOpponentPenaltyMark, 0);
+          ballGoalv = ballGoalv.rotate(-pi_2);
+
+          bool kickRight = ballRobotv.dot(ballGoalv) < 0;
+
+          chosenKickType = theLibStriker.getKick(chosenDoItAsap,kickRight);
+
+          chosenTarget = theLibStriker.goalTarget(chosenDoItAsap, true);
+
           ballPositionAtLastTargetChoice = theFieldBall.positionOnField;
         }
-    
-        theGoToBallAndKickSkill(theLibMisc.angleToTarget(kickTarget), kickType, !doItASAP);
+
+        Angle angle = theLibMisc.calcAngleToTarget(chosenTarget);
+
+        theGoToBallAndKickSkill(angle, chosenKickType, !chosenDoItAsap);
       }
     }
 
@@ -148,14 +181,17 @@ class BasicStrikerCard : public BasicStrikerCardBase
 
       action
       {
-        ballPositionAtLastTargetChoice = InvalidGlobalVector2f;
-        float distance = (theRobotPose.translation - passTarget).norm();
-        KickInfo::KickType kickType = theLibStriker.getWalkKick(passTarget);
+        ballPositionAtLastTargetChoice = MAGIC_VECTOR;
+        float distance = theLibMisc.distance(passTarget, theRobotPose);
+        KickInfo::KickType kickType = theLibPass.getKickType(passTarget);
 
-        theGoToBallAndKickSkill(theLibMisc.angleToTarget(passTarget), kickType, true, distance);
+        theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(passTarget), kickType, true, distance);
       }
     }
   }
+
+
+
 };
 
 MAKE_CARD(BasicStrikerCard);

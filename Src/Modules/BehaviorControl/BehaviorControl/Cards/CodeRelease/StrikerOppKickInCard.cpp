@@ -88,7 +88,7 @@ class StrikerOppKickInCard : public StrikerOppKickInCardBase
         }
         Angle targetAngle = Angle(std::atan2(theFieldBall.recentBallPositionOnField().y(), 
             theFieldBall.recentBallPositionOnField().x()-defended_x));
-        LocalPose2f relativize = theLibMisc.glob2Rel(theFieldBall.recentBallPositionOnField().x() - (distanceFromBall*std::cos(targetAngle)),
+        Pose2f relativize = theLibMisc.glob2Rel(theFieldBall.recentBallPositionOnField().x() - (distanceFromBall*std::cos(targetAngle)),
             theFieldBall.recentBallPositionOnField().y() - (distanceFromBall*std::sin(targetAngle)));
         Pose2f targetPos = Pose2f(Angle::fromDegrees(targetAngle),
                                 relativize.translation.x(),

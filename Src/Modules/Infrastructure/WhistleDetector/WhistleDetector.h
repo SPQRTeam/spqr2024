@@ -13,7 +13,6 @@
 #include "Platform/SystemCall.h"
 #include <string>
 #include "Tools/Math/Constants.h"
-#include "Tools/OnnxHelper/OnnxHelper.h"
 #include "Tools/RingBufferWithSum.h"
 #include <onnxruntime_cxx_api.h>
 
@@ -54,9 +53,17 @@ class WhistleDetector : public WhistleDetectorBase {
   std::string oldWhistleNetPath;
 
   // onnx stuff
+  Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+  std::unique_ptr<Ort::Session> session;
   std::array<float, 513> input{};
   std::array<float, 1> output{};
-  OnnxHelper<float, float> *whistleNet;
+  std::array<int64_t, 3> input_shape{1,1,513};
+  std::array<int64_t, 2> output_shape{1,1};
+  const char* input_names[1] = {"input"};
+  size_t numInputNodes;
+  const char* output_names[1] = {"output"};
+  size_t numOutputNodes;
+  Ort::Env env;
 
   //physical model detection variables
   int windowSize = 0;
@@ -116,6 +123,9 @@ private:
 
   //detects first overtone peak among the last 200 amplitudes (populated pm_confidence)
   void overtone_detection();
+
+  //computes neural network confidence (populates nn_confidence)
+  void nn_inference();
 
   //switches to another mic if the current mic is probably broken
   void checkMics(float ampSum);

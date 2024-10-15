@@ -72,8 +72,7 @@ void GameStateHandler::update(GameInfo& theGameInfo)
   if(guessedGameState != STATE_INITIAL)
   {
     theGameInfo.state = guessedGameState;
-
-    if(theRawGameInfo.state == STATE_PLAYING && guessedGameState == STATE_READY)
+    if(guessedGameState == STATE_READY)
       theGameInfo.kickingTeam = kickingTeam;
   }
 
@@ -87,22 +86,22 @@ bool GameStateHandler::checkForWhistleSPQR() const {
   int numOfDetectedWhistles = 0;
 
   if(theWhistle.lastTimeWhistleDetected > timeOfLastStateChange && theFrameInfo.getTimeSince(theWhistle.lastTimeWhistleDetected) < 1000) 
-    ++numOfDetectedWhistles;
+    numOfDetectedWhistles += 1;
 
-  for(const Teammate& teammate : theTeamData.teammates)
-    if(teammate.theWhistle.lastTimeWhistleDetected > timeOfLastStateChange && theFrameInfo.getTimeSince(theWhistle.lastTimeWhistleDetected) < 1000)
-      ++numOfDetectedWhistles;
-
+  for(const Teammate& teammate : theTeamData.teammates){
+  if(teammate.theWhistle.lastTimeWhistleDetected > timeOfLastStateChange && theFrameInfo.getTimeSince(theWhistle.lastTimeWhistleDetected) < 1000) {
+      numOfDetectedWhistles += 1;
+    }
+  }
 
   if (numOfDetectedWhistles >= minWhistlesToDetect)
     return true;
 
-//  if (theWhistle.lastTimeWhistleDetected < 1000)
-  //  return true;
-
   if (theTeamData.numberOfActiveTeammates < minWhistlesToDetect) {
     return numOfDetectedWhistles >= 1;
   }
+
+  OUTPUT_TEXT("Num of detected whistles: " << numOfDetectedWhistles);
 
   return false;
 }
@@ -162,6 +161,7 @@ bool GameStateHandler::checkForReadyGesture() const
   // Check for teammates
   for (const Teammate& mate : theTeamData.teammates) {
     if (mate.theRefereeEstimator.isDetected) {
+      std::cout << "rivecuto " << mate.number << std::endl;
       return true;
     }
   }

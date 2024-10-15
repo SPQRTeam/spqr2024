@@ -137,4 +137,7 @@ private:
 
   /** Provides the ready position for each robot **/
   Pose2f myReadyPosition() const;
+
+  /** Checks if position is inside the rectangle defined by corner1 and corner2. **/
+  bool isPositionInsideRectangle(const Vector2f& position, const Vector2f& corner1, const Vector2f& corner2) const;
 };

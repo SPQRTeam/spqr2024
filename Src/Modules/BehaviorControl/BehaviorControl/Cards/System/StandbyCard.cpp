@@ -59,7 +59,7 @@ class StandbyCard : public StandbyCardBase
   {
     theActivitySkill(BehaviorStatus::standby);
     theSaySkill("STANDBY");
-    LocalPose2f relative = theLibMisc.glob2Rel(0, -sign(theRobotPose.translation.y())*theFieldDimensions.yPosLeftSideline); // relative coordinate of opposite T-Junction
+    Pose2f relative = theLibMisc.glob2Rel(0, -sign(theRobotPose.translation.y())*theFieldDimensions.yPosLeftSideline); // relative coordinate of opposite T-Junction
     theLookAtPointSkill(Vector3f(relative.translation.x(), relative.translation.y(), 2500.0), HeadMotionRequest::upperCamera);
     theStandSkill();
   }

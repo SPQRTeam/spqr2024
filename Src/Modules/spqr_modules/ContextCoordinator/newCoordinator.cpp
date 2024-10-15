@@ -31,32 +31,32 @@ Vector2f NewCoordinator::getBestPositionForRole(PlayerRole::RoleType role, Pose2
     switch (role)
     {
         case PlayerRole::RoleType::striker:{
-            return theLibStriker.strikerPosition;
+            return theLibStriker.getStrikerPosition(ballSeen);
             break;
         }
 
         case PlayerRole::RoleType::defenderone:{
-            return theLibDefender.defenderonePosition;
+            return theLibDefender.getDefenderonePosition();
             break;
         }
         
         case PlayerRole::RoleType::defendertwo:{
-            return theLibDefender.defendertwoPosition;
+            return theLibDefender.getDefendertwoPosition();
             break;
         }
 
         case PlayerRole::RoleType::supporter:{
-            return theLibSupporter.supporterPosition;
+            return theLibSupporter.getSupporterPosition();
             break;
         }
         
         case PlayerRole::RoleType::jolly:{
-            return theLibJolly.jollyPosition;
+            return theLibJolly.getJollyPosition();
             break;
         }
 
         case PlayerRole::RoleType::libero:{
-            return theLibLibero.liberoPosition;
+            return theLibLibero.getLiberoPosition();
             break;
         }
         
@@ -223,16 +223,23 @@ void NewCoordinator::updateFixedRole(PlayerRole& role){
 }
 
 void NewCoordinator::updateRole(PlayerRole& role){
-    if(theRobotInfo.number == 1){
-        role.role = PlayerRole::goalie;
-        role.lastRole = PlayerRole::goalie;
+    // if(theRobotInfo.number == 1){
+    //     role.role = PlayerRole::goalie;
+    //     role.lastRole = PlayerRole::goalie;
+    // }
+    // else if(theMessageManagement.outOfPackets)
+    //     updateFixedRole(role);
+    // else if(current_context == PlayerRole::playing)
+    //     updatePlayingRole(role);
+    // else if(current_context == PlayerRole::search_for_ball && current_context != previous_context)
+    //     updateSearchRole(role);
+
+    if(theRobotInfo.number == RobotInfo::RoleNumber::autonomous){
+        role.role = PlayerRole::autonomous;
     }
-    else if(theMessageManagement.outOfPackets)
-        updateFixedRole(role);
-    else if(current_context == PlayerRole::playing)
-        updatePlayingRole(role);
-    else if(current_context == PlayerRole::search_for_ball && current_context != previous_context)
-        updateSearchRole(role);
+    else if(theRobotInfo.number == RobotInfo::RoleNumber::controlled){
+        role.role = PlayerRole::controlled;
+    }
 }
 
 void NewCoordinator::updateContext(PlayerRole& role){

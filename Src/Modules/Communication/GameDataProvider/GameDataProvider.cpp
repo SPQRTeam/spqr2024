@@ -23,7 +23,7 @@ GameDataProvider::GameDataProvider()
 
   // Initialize socket
   VERIFY(socket.setBlocking(false));
-  VERIFY(socket.bind("0.0.0.0", GAMECONTROLLER_DATA_PORT));
+  VERIFY(socket.bind("127.0.0.1", GAMECONTROLLER_DATA_PORT));
 }
 
 void GameDataProvider::update(RobotInfo& theRobotInfo)

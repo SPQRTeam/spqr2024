@@ -1,15 +1,17 @@
 /**
  * @file LibMiscProvider.h
  * 
- * This file defines a module that holds some generic utility functions.
+ * See LibMisc
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
 
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/BehaviorControl/FieldBall.h"
 #include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/Modeling/TeamPlayersModel.h"
 #include "Representations/Communication/RobotInfo.h"
 #include "Tools/Module/Module.h"
@@ -26,6 +28,7 @@ MODULE(LibMiscProvider,
   PROVIDES(LibMisc),
   // LOADS_PARAMETERS(
   // {,
+  //   // nothing for now!
   // }),
 });
 
@@ -34,109 +37,89 @@ class LibMiscProvider : public LibMiscProviderBase
 private:
   
   /**
-   * @brief Update the LibMisc representation.
-   * 
-   * @param libMisc The LibMisc representation to update.
+   * Updates LibMisc
+   * @param libMisc The representation provided
    */
   void update(LibMisc& libMisc) override;
 
+  /** Returns -1 if the direction points to the own field, 1 if it points to the opponent field **/
+  int localDirectionToField(const Vector2f& localDirection) const;
+
+  /** Provides the distance between 2 Pose2f **/
+  float distance(const Pose2f& p1, const Pose2f& p2) const;
+
+  /** Provides the distance between 2 Points (Vector2f) **/   //TODO: Flavio&Valerio
+  float distanceVec(const Vector2f& p1, const Vector2f& p2) const;
+
+  //Maps value from interval [fromIntervalMin, fromIntervalMax] to interval [toIntervalMin, toIntervalMax]
+  float mapToInterval(float value, float fromIntervalMin, float fromIntervalMax, float toIntervalMin, float toIntervalMax) const;
+
   /**
-   * @brief Check if currentValue is close enough to target.
-   * 
-   * @param currentValue The value to check.
-   * @param target The target value.
-   * @param bound The tolerance.
-   * 
-   * @return [bool] true if currentValue is within bound of target.
+   * Checks if currentValue is close enough to target.
+   * bound indirectly determines the tolerance.
    */
   bool isValueBalanced(float currentValue, float target, float bound) const;
 
   /**
-   * @brief Transforms a position in global (field) coordinates into local (robot) coordinates.
-   * 
-   * @param x The x coordinate of the position in global coordinates.
-   * @param y The y coordinate of the position in global coordinates.
-   * 
-   * @return [LocalPose2f] The position in local coordinates.
-   * 
-   * @note This is a wrapper around the Eigen operation theRobotPose.inversePose * targetOnField
+   * Calculates the angle of the given point wrt the robot position and orientation.
+   * Point to be given in global coordinates.
    */
-  LocalPose2f glob2Rel(float x, float y) const;
+  float angleToTarget(float x, float y) const;
 
   /**
-   * @brief Transforms a position in local (robot) coordinates into global (field) coordinates.
-   * 
-   * @param x The x coordinate of the position in local coordinates.
-   * @param y The y coordinate of the position in local coordinates.
-   * 
-   * @return [GlobalPose2f] The position in global coordinates.
-   * 
-   * @note This is a wrapper around the Eigen operation theRobotPose * positionRelative
+   * Transforms a position in global (field) coordinates into local (robot) coordinates.
    */
-  GlobalPose2f rel2Glob(float x, float y) const;
+  Pose2f glob2Rel(float x, float y) const;
 
   /**
-   * @brief Converts an angle from radians to degrees.
-   * 
-   * @param x The angle in radians.
-   * 
-   * @return [DegAngle] The angle in degrees.
+   * Transforms a position in local (robot) coordinates into global (field) coordinates.
    */
-  DegAngle radiansToDegree(RadAngle x) const;
+  Pose2f rel2Glob(float x, float y) const;
+
+  /**
+   * Computes the norm of vector (x,y).
+   */
+  float norm(float x, float y) const;
+
+  /**
+   * Converts an angle from radians to degrees.
+   */
+  float radiansToDegree(float x) const;
   
   /**
-   * @brief Angle between two vectors in radians.
-   * 
-   * @param v1 The first vector.
-   * @param v2 The second vector.
-   * 
-   * @return [RadAngle] The angle between the two vectors.
+   * Angle of the line passing through two points.
+   * WARNING: [torch, 2022]
+   *     Something about the implementation doesn't convince me.
+   *     See LibMiscProvider.cpp for details.
+   *     Anyway, this is used in a couple modules, so I can't change this at the moment.
+   *     Future users, make sure this is really what you want before using this.
    */
-  RadAngle angleBetweenVectors(const Vector2f& v1, const Vector2f& v2) const;
+  float angleBetweenPoints(const Vector2f& p1, const Vector2f& p2) const;
 
   /**
-   * @brief Angle between two vectors in radians in global coordinate (with the same center/start point)
-   * 
-   * @param start The start point of the vectors.
-   * @param end1 The end point of the first vector.
-   * @param end2 The end point of the second vector.
-   * 
-   * @return [RadAngle] The angle between the two vectors.
+   * Angle between two vectors in radians 
    */
-  RadAngle angleBetweenGlobalVectors(const GlobalVector2f& start, const GlobalVector2f& end1, const GlobalVector2f& end2) const;
+  float angleBetweenVectors(const Vector2f& v1, const Vector2f& v2) const;
 
   /**
-   * @brief Check if the point is inside the sector (between startRadius and endRadius) 
-   * delimited by the vectors startBounds->endBound1 and startBounds->endBound2
-   * 
-   * @param startBounds The start point of the sector.
-   * @param endBound1 The end point of the first vector.
-   * @param endBound2 The end point of the second vector.
-   * @param startRadius The start radius of the sector.
-   * @param endRadius The end radius of the sector.
-   * @param point The point to check.
-   * 
-   * @return [bool] true if the point is inside the sector.
+   * Angle between two vectors in radians in global coordinate (with the same center/start point)
    */
-  bool isInsideGlobalSector(const GlobalVector2f startBounds, const GlobalVector2f endBound1, const GlobalVector2f endBound2, float startRadius, float endRadius, const GlobalVector2f point) const;
+  float angleBetweenGlobalVectors(const Vector2f& start, const Vector2f& end1, const Vector2f& end2) const;
 
   /**
-   * @brief Calculate the mirror angle of the vector BC with respect to the vector BA
-   * 
-   * @param A The start point of the vectors.
-   * @param B The end point of the first vector.
-   * @param C The end point of the second vector.
-   * 
-   * @return [RadAngle] The mirror angle.
+   * Check if the point is inside the sector (btw startRadius and endRadius) delimited from the vectors 
+   * startBounds->endBound1  &  startBounds->endBound2
    */
-  RadAngle getMirrorAngle(Vector2f A, Vector2f B, Vector2f C);
+  bool isInsideGlobalSector(const Vector2f startBounds, const Vector2f endBound1, const Vector2f endBound2, float startRadius, float endRadius, const Vector2f point) const;
 
+  bool isInsideGlobalRectangle(const Vector2f point, const Vector2f bottom, const Vector2f left, const Vector2f right, const Vector2f up) const;
+
+  Vector2f clipTargetOutsideObstacles(const Vector2f& target, const float& radius, const bool& consider_teammate_as_obstacles) const;
   /**
-   * @brief Calculate the angle to the target point
-   * 
-   * @param target The target point.
-   * 
-   * @return [RadAngle] The angle to the target point.
-   */
-  RadAngle angleToTarget(const Vector2f target) const;
+   * Calculate the angle of the given point wrt the robot position and orientation.
+  */
+  Angle calcAngleToTarget(const Vector2f target) const;
+
+  Angle getMirrorAngle(Vector2f A, Vector2f B, Vector2f C);
+
 };

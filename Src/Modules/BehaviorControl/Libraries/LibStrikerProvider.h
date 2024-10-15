@@ -1,7 +1,9 @@
 /**
  * @file LibStrikerProvider.h
  * 
- * This file defines a module that provides some utilities (primarily) for the striker.
+ * See LibStriker
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
@@ -13,12 +15,18 @@
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Configuration/KickInfo.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/BehaviorControl/PlayerRole.h"
 #include "Representations/BehaviorControl/FieldBall.h"
+#include "Representations/BehaviorControl/Libraries/LibDefender.h"
+#include "Representations/BehaviorControl/PlayerRole.h"
 #include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/BehaviorControl/Libraries/LibSpec.h"
 #include "Representations/BehaviorControl/Libraries/LibStriker.h"
+#include "Representations/Communication/TeamData.h"
+#include "Representations/Communication/TeamInfo.h"
+#include "Representations/Communication/GameInfo.h"
 #include "Representations/Communication/RobotInfo.h"
+#include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/spqr_representations/PassShare.h"
 #include "Representations/spqr_representations/GameState.h"
 #include "Tools/Math/BHMath.h"
 #include "Tools/Module/Module.h"
@@ -29,20 +37,28 @@ MODULE(LibStrikerProvider,
   USES(OpponentGoalModel),
   REQUIRES(TeamPlayersModel),
   REQUIRES(TeamBallModel),
-  REQUIRES(ObstacleModel), 
-  REQUIRES(BallModel),
+  REQUIRES(ObstacleModel), // Needed for shouldKick
+  REQUIRES(BallModel), // Needed for shouldKick
   REQUIRES(KickInfo),
   REQUIRES(FieldDimensions),
-  REQUIRES(FieldBall),   
+  REQUIRES(FieldBall),    // TODO was only for strikerPassCommonConditions
+  USES(PlayerRole), // Needed for opponent corner kick
+  REQUIRES(LibDefender), // Needed for opponent corner kick
   REQUIRES(LibMisc),
   REQUIRES(LibSpec),
-  REQUIRES(GameState), 
-  REQUIRES(RobotInfo), 
-  USES(PlayerRole),
   PROVIDES(LibStriker),
+  REQUIRES(TeamData), // Needed for opponent corner kick
+  REQUIRES(OpponentTeamInfo), // Needed for opponent corner kick
+  REQUIRES(OwnTeamInfo),
+  REQUIRES(GameInfo), // Needed for opponent corner kick
+  REQUIRES(GameState), // Needed for opponent corner kick
+  REQUIRES(RobotInfo), // Needed for shouldPass
+  REQUIRES(MotionInfo),
+  REQUIRES(PassShare),    // TODO was only for strikerPassCommonConditions
 
   // LOADS_PARAMETERS(
   // {,
+  //   // nothing for now!
   // }),
 });
 
@@ -51,66 +67,15 @@ class LibStrikerProvider : public LibStrikerProviderBase
 private:
   
   /**
-   * @brief Updates the LibStriker representation
-   * 
-   * @param libStriker The LibStriker representation to update
+   * Updates LibStriker
+   * @param libStriker The representation provided
    */
   void update(LibStriker& libStriker) override;
 
-  /**
-   * @brief Returns the striker position (global coordinates)
-   * 
-   * @return The striker position [GlobalVector2f]
-   */
-  GlobalVector2f getStrikerPosition() const;
 
-  /**
-   * @brief Returns the striker position in freeKick situations (global coordinates)
-   * 
-   * @return The striker position [GlobalVector2f]
-   */
-  GlobalVector2f getStrikerPositionSpecial() const;
+  // ===== IMPLEMENTATIONS OF LibStriker =====
 
-  /**
-   * @brief Returns the dribble point for the striker (global coordinates)
-   * 
-   * @return The dribble point [GlobalVector2f]
-   */
-  GlobalVector2f getStrikerDribblePoint();
-
-  /**
-  * @brief Returns the best kick type for the striker
-  * 
-  * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
-  * @param kickRight a bool attribute, is true when you want to kick with right foot
-  * 
-  * @return The best kick type [KickInfo::KickType]
-  */
-  KickInfo::KickType getKick(bool kickAsap, bool kickRight) const;
-
-   /**
-   * @brief Get the best kick type to reach the target.
-   * 
-   * @param target The target point in global coordinates
-   * 
-   * @return [KickInfo::KickType] The best kick type to reach the target.
-   */
-  KickInfo::KickType getWalkKick(GlobalVector2f target) const;
-
-  /**
-   * @brief Returns whether the robot should kick or not
-   * 
-   * @param currentlyKicking a bool attribute, is true when the robot is currently kicking
-   * @param kickIntervalThreshold a float attribute, the threshold for the kick interval
-   * 
-   * @return If the robot should kick or not [bool]
-   */
-  bool shouldKick(bool currentlyKicking, float kickIntervalThreshold) const;
-
-
-  /** 
-   * Returns the global y coord point we are looking at on the opponent groundline
-   */
+  /** Returns the global y coord point we are looking at on the opponent groundline*/
   float projectGazeOntoOpponentGroundline() const;
 
   /** Provides a vector with the point of beginning and finish of goal areas free from opponent coverage
@@ -134,6 +99,32 @@ private:
     * @return the Vector2f of the position selected to shoot
     * **/
   std::pair<Vector2f, FreeGoalTargetableArea> goalTargetWithArea(bool shootASAP, bool forceHeuristic) const;
+
+  /**
+   * Groups some conditions common to a couple striker cards.
+   * TODO this is likely to end up unused, check after porting.
+   *      The cards in question are unlikely to be ported to the new [2023] repo.
+   */
+  bool strikerPassCommonConditions(int hysteresisSign) const;
+
+  /**
+   * PD controller that returns the approaching speed.
+   * @param range The distance range taken to pass from speed 1 to the specified minimum speed
+   * @param kp The controller proportional gain
+   * @param kd The controller derivative gain
+   * @param minSpeed The minimum speed allowed 
+   * @return speed in Pose2f in a range from 1 to minSpeed 
+  **/
+  Pose2f getApproachSpeed(Rangef range, float kp, float kd, float minSpeed) const;
+
+  /**
+   * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
+   * @param kickRight a bool attribute, is true when you want to kick with right foot
+   * @return The best kickType chosen according to the opponent goal ditance
+  * **/
+  KickInfo::KickType getKick(bool kickAsap, bool kickRight) const;
+
+  // ===== FOR INTERNAL USE =====
 
   /** @author Emanuele Musumeci
    * Given a certain point in input proivdes its projection on the opponent ground line by the robot's perspective
@@ -161,5 +152,40 @@ private:
    * @return value assigned after area evaluation
    * **/
   float areaValueHeuristic(float leftLimit, float rightLimit, float poles_weight = 1, float opponents_weight = 1, float teammates_weight = 1) const;
+
+  /**
+   * Returns the distance of the opponent closest to the given point, squared.
+   */
+  float sqrDistanceOfClosestOpponentToPoint(const Vector2f& p) const;
+
+  /**
+   * @author Emanuele Antonioni
+   * 
+   * Gives the best movement point for the striker selecting it between five fixed point (center, right, left, very right, very left)
+   * */
+  Vector2f strikerMovementPoint() const;
+
+
+  /**
+   * Return true if the robot should kick. False otherwise.
+  */
+  bool shouldKick(bool currentlyKicking, float kickIntervalThreshold) const;
+
+
+  /**
+   * @author Valerio Spagnoli
+   * 
+   * Return the target point for the dribbling.
+   * */
+  Vector2f strikerDribblePoint();
+
+
+  /**
+   * Return the position for the striker:
+   * - base case: return the position of the ball 
+   * - special cases: corner and kickin 
+   */
+  Vector2f getStrikerPosition(bool ballSeen) const;
+  Vector2f getStrikerPositionSpecial(bool ballSeen) const;
 
 };

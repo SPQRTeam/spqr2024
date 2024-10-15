@@ -38,13 +38,10 @@ MODULE(LibPassProvider,
   REQUIRES(LibMisc),
   USES(PlayerRole),
   PROVIDES(LibPass),
-  LOADS_PARAMETERS(
-  {,
-    (float) bestPassageDistance, // the best distance to do a passage
-    (float) passageVariance, // the variance of distance to do a passage
-    (float) closestInterceptorThreshold, // the maximum distance of the closest opponent interceptor after which the passage line is considered completely free. 
-    (float) minDistanceGain, // minimum euclidean distance difference between the sender and the receiver of the ball to consider a passage
-  }),
+  // LOADS_PARAMETERS(
+  // {,
+  //   // nothing for now!
+  // }),
 });
 
 class LibPassProvider : public LibPassProviderBase
@@ -92,6 +89,20 @@ private:
    * @return a Vector2f poiting to the passing target or the goal line if no passing is found
    */
   Pose2f poseToPass(LibPass& libPass);     // this gets the libPass parameter b/c it needs to modify something
+
+  /**
+   * <no doc was available, easy guess>
+   * Returns the passing information of the striker's PassShare.
+   * Despite the name's first impression, this is useful to anyone BUT the striker.
+   * Most likely the jolly.
+   * 
+   * @returns The following fields of the striker's PassShare, in this order:
+   *          <readyPass, passingTo, passTarget>
+   */
+  std::tuple<int,int,Pose2f> strikerPassShare() const;
+
+
+  KickInfo::KickType getKickType(Vector2f target) const;
 
 
   // ===== FOR INTERNAL USE =====

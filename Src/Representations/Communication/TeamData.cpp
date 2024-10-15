@@ -13,6 +13,7 @@ bool Teammate::handleMessage(InMessage& message)
 {
   switch(message.getMessageID())
   {
+      // HANDLE_PARTICLE(FieldCoverage);
       // HANDLE_PARTICLE(RobotHealth);
     // case idPlayerRole:    // SPQR, special
     //   // there's no "full" thePlayerRole by design, just a simple role field to fill like this.

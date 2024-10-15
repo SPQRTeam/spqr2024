@@ -1,7 +1,9 @@
 /**
  * @file LibSupporterProvider.cpp
  * 
- * This file implements a module that computes the supporter position.
+ * See LibSupporter
+ *
+ * @author Francesco Petri
  */
 
 #include "LibSupporterProvider.h"
@@ -12,27 +14,26 @@ MAKE_MODULE(LibSupporterProvider, behaviorControl);
 
 void LibSupporterProvider::update(LibSupporter& libSupporter)
 {
-  libSupporter.supporterPosition = getSupporterPosition();
-
   DECLARE_DEBUG_DRAWING3D("module:LibSupporterProvider:supporterPosition", "field");
-  if(thePlayerRole.role == PlayerRole::supporter){
-    CYLINDER3D("module:LibSupporterProvider:supporterPosition", libSupporter.supporterPosition.x(), libSupporter.supporterPosition.y(), 0.0f, 0.0f, 0.0f, 0.0f, 50.0f, 20.0f, ColorRGBA::orange);
-  }
+
+  libSupporter.getSupporterPosition = [this]() -> Vector2f {
+    return getSupporterPosition();
+  };
+
 }
 
-GlobalVector2f LibSupporterProvider::getSupporterPosition() const {
-  // Set the target position to the ball position - 1500 on the x axis
-  GlobalVector2f ball_position = theFieldBall.recentBallPositionOnField();
-  GlobalVector2f target = GlobalVector2f(ball_position.x() - 1500.f, ball_position.y());
+Vector2f LibSupporterProvider::getSupporterPosition() const {
+  Vector2f ball_position = theFieldBall.recentBallPositionOnField();
+  Vector2f target = Vector2f(ball_position.x() - 1500.f, ball_position.y());
 
-  /** Clip the target position to the field boundaries to avoid the robot to go out of the field
-   * - The x axis is clipped to -1200 and 0
-   * - The y axis is clipped to the field boundaries -500/+500
-   */
-  if(target.x() < -1200.f) target = GlobalVector2f(-1200.f, target.y());
-  else if(target.x() > 0.f) target = GlobalVector2f(0.f, target.y());
-  if (target.y() < theFieldDimensions.yPosRightSideline + 500) target = GlobalVector2f(target.x(), theFieldDimensions.yPosRightSideline + 500);
-  else if (target.y() > theFieldDimensions.yPosLeftSideline - 500) target = GlobalVector2f(target.x(), theFieldDimensions.yPosLeftSideline - 500);
+  //* Clip the target position to the field boundaries -500 to avoid the robot to go out of the field
+  if(target.x() < -1200.f) target = Vector2f(-1200.f, target.y());
+  else if(target.x() > 0.f) target = Vector2f(0.f, target.y());
+  if (target.y() < theFieldDimensions.yPosRightSideline + 500) target = Vector2f(target.x(), theFieldDimensions.yPosRightSideline + 500);
+  else if (target.y() > theFieldDimensions.yPosLeftSideline - 500) target = Vector2f(target.x(), theFieldDimensions.yPosLeftSideline - 500);
 
-  return target.hasNaN() ? GlobalVector2f(1000.f,1000.f) : target;
+  if(thePlayerRole.role == PlayerRole::supporter){  
+    CYLINDER3D("module:LibSupporterProvider:supporterPosition", target.x(), target.y(), 0.0f, 0.0f, 0.0f, 0.0f, 50.0f, 20.0f, ColorRGBA::orange);
+  }
+  return target.hasNaN() ? Vector2f(1000.f,1000.f) : target;
 }

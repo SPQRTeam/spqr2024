@@ -3,7 +3,7 @@ package teamcomm.data;
 
 public class Obstacle {
 
-    public static final int MAX_OBS_SIZE = 20; // set this accordingly to MAX_OBSTACLES in Src/Tools/Communication/DebugMessageTCM.h
+    public static final int MAX_OBS_SIZE = 20; // set this accordingly to MAX_OBSTACLES in /Tools/Communication/DebugMessageTCM.h
 
     public enum ObsTypes {
         goalpost,

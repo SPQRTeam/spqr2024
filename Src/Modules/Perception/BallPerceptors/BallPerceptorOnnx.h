@@ -3,7 +3,9 @@
  *
  * This file declares a module that detects balls in images with a neural network.
  *
- * @author Daniele Affinita
+ * @author Bernd Poppinga
+ * @author Felix Thielke
+ * @author Gerrit Felsch
  */
 
 #pragma once
@@ -26,7 +28,6 @@
 #include "Tools/ImageProcessing/PatchUtilities.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Module/Module.h"
-#include "Tools/OnnxHelper/OnnxHelper.h"
 #include <CompiledNN/CompiledNN.h>
 #include <CompiledNN/Model.h>
 
@@ -54,13 +55,16 @@ MODULE(BallPerceptorOnnx,
   PROVIDES(BallPercept),
   LOADS_PARAMETERS(
   {,
-    (std::string) encoderName, 
+    (std::string) encoderName, /**< The file name (relative to "NeuralNetworks/BallPerceptor") from which to load the model.  */
     (std::string) classifierName,
     (std::string) correctorName,
     (float) guessedThreshold, /**< Limit from which a ball is guessed. */
     (float) acceptThreshold, /**< Limit from which a ball is accepted. */
     (float) ensureThreshold, /**< Limit from which a ball is detected for sure. */
+    (bool) useContrastNormalization,
     (float) ballAreaFactor,
+    (float) contrastNormalizationPercent,
+    (bool) useFloat,
     (PatchUtilities::ExtractionMode) extractionMode,
   }),
 });
@@ -75,15 +79,20 @@ private:
   Ort::Env env;
   Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
 
-  OnnxHelper<float, float> *feature_extractor;
-  OnnxHelper<float, float> *classifier;
-  OnnxHelper<float, float> *detector;
+  std::unique_ptr<Ort::Session> feature_extractor;
+  std::unique_ptr<Ort::Session> classifier;
+  std::unique_ptr<Ort::Session> detector;
+
+  std::array<int64_t, 4> feature_extractor_input_shape{1,1,32,32};
+  std::array<int64_t, 2> feature_extractor_output_shape{1,512};
+  std::array<int64_t, 2> detector_output_shape{1,3};
+  std::array<int64_t, 2> classifier_output_shape{1,1};
 
   void* shm_ptr;
 
-  static constexpr std::size_t patchSize = 32;
+  std::size_t patchSize = 0;
 
   void update(BallPercept& theBallPercept) override;
   float apply(const Vector2i& ballSpot, Vector2f& ballPosition, float& predRadius);
-  void setup();
+  void compile();
 };

@@ -43,13 +43,13 @@ float SearcherModelProvider::compute2dGaussianKernel(SearcherModel::Cell cell){
 }
 
 bool SearcherModelProvider::isInsideFieldOfView(SearcherModel::Cell cell){
-  LocalPose2f cellPositionRelative = theLibMisc.glob2Rel(cell.positionOnField.x(), cell.positionOnField.y()).translation;
+  Pose2f cellPositionRelative = theLibMisc.glob2Rel(cell.positionOnField.x(), cell.positionOnField.y()).translation;
 
   if(cellPositionRelative.translation.x() < 0)
     return false;
 
   //the cell is too far
-  if((theRobotPose.translation-cell.positionOnField).norm() > fieldOfViewFarTh)
+  if(theLibMisc.distance(theRobotPose.translation, cell.positionOnField) > fieldOfViewFarTh)
     return false;
       
   int pointsInsideFov = 0;
@@ -122,8 +122,8 @@ void SearcherModelProvider::update(SearcherModel& SearcherModel){
     const FieldDimensions& fieldDimensions = static_cast<const FieldDimensions&>(theFieldDimensions);
     const CameraMatrix&    cameraMatrix = static_cast<const CameraMatrix&>(theCameraMatrix);
 
-    maxDistance = Vector2f(theFieldDimensions.xPosOpponentGroundLine - theFieldDimensions.xPosOwnGroundLine,
-                           theFieldDimensions.yPosLeftSideline - theFieldDimensions.yPosRightSideline).norm();
+    maxDistance = theLibMisc.norm(theFieldDimensions.xPosOpponentGroundLine - theFieldDimensions.xPosOwnGroundLine,
+                                   theFieldDimensions.yPosLeftSideline - theFieldDimensions.yPosRightSideline);
     if(cameraMatrix.isValid)
       Projection::computeFieldOfViewInFieldCoordinates(robotPose, cameraMatrix, cameraInfo, fieldDimensions, fieldOfView);
     
@@ -179,7 +179,7 @@ void SearcherModelProvider::update(SearcherModel& SearcherModel){
       // STAGE 1: position based weights
       
       cellPosition = matrix[i].positionOnField;
-      cellDistance = Vector2f(abs(theRobotPose.translation.x() - cellPosition.x()), abs(theRobotPose.translation.y() - cellPosition.y())).norm();
+      cellDistance = theLibMisc.norm(abs(theRobotPose.translation.x() - cellPosition.x()), abs(theRobotPose.translation.y() - cellPosition.y()));
 
       distanceComponent = LocalPositionWeight*(1-cellDistance/maxDistance);
       
@@ -255,7 +255,7 @@ void SearcherModelProvider::update(SearcherModel& SearcherModel){
             matrix[current_flat].type = SearcherModel::Cell::CellType::standard;
           
           cellPosition = matrix[current_flat].positionOnField;
-          cellDistance = Vector2f(abs(theRobotPose.translation.x() - cellPosition.x()), abs(theRobotPose.translation.y() - cellPosition.y())).norm();
+          cellDistance = theLibMisc.norm(abs(theRobotPose.translation.x() - cellPosition.x()), abs(theRobotPose.translation.y() - cellPosition.y()));
 
           distanceComponent = LocalPositionWeight*(1-cellDistance/maxDistance);
 

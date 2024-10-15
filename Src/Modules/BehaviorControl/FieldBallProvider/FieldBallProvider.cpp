@@ -116,7 +116,7 @@ void FieldBallProvider::checkIfBallIsInsideGoalRectangle(FieldBall& fieldBall)
   Vector2f ballPos = fieldBall.recentBallPositionOnField();
   Vector2f bottomLeft = Vector2f(theFieldDimensions.xPosOwnGroundLine,theFieldDimensions.yPosLeftGoalArea);
   Vector2f topRight = Vector2f(theFieldDimensions.xPosOwnPenaltyMark, theFieldDimensions.yPosRightGoalArea);
-  fieldBall.isInsideGoalRectangle = Geometry::isPointInsideRectangle(bottomLeft, topRight, ballPos);
+  fieldBall.isInsideGoalRectangle = Geometry::isPointInsideRectangle2(bottomLeft, topRight, ballPos);
 }
 
 void FieldBallProvider::checkIfBallIsInsideDefenderCircle(FieldBall& fieldBall)

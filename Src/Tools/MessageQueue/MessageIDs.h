@@ -38,6 +38,8 @@ ENUM(MessageID,
   idCirclePercept,
   idFallDownState,
   idFieldBoundary,
+  idFieldCoverage,
+  idFieldFeatureOverview,
   idFootOffset,
   idFootSoleRotationCalibration,
   idFootSupport,
@@ -118,5 +120,7 @@ ENUM(MessageID,
   idTypeInfoRequest,
 
   // spqr
+  idPassShare,
   idPlayerRole,
+  idRoleAndContext,
 });

@@ -55,7 +55,7 @@ void MessageManager::update(MessageManagement& mm){
                        (secondsRemaining/20);  // packets allocated for goalie
       int numActivePlayers = theTeamData.numberOfActiveTeammates;
       if(numAvailablePackets > 0)
-        rate = std::max(secondsRemaining * (numActivePlayers + 1) / numAvailablePackets, 2) * 1000;
+        rate = (secondsRemaining * numActivePlayers / numAvailablePackets) * 1000;
       OUTPUT_TEXT("SecsRemaining:   " << secondsRemaining);
       OUTPUT_TEXT("numAvailablePackets:     " << numAvailablePackets);
       OUTPUT_TEXT("numActivePlayers:      " << numActivePlayers);
@@ -103,14 +103,14 @@ void MessageManager::update(MessageManagement& mm){
   }
 
   // so we have only one place where to list conditional events
-  bool anyConditionalEvent = (
-    // conditionalEvent_strikerDetectedGoal ||
-    conditionalEvent_whistle ||
-    conditionalEvent_searcherSawBall ||
-    conditionalEvent_goalieSawBall ||
-    conditionalEvent_teamSawBallAfterAWhile ||
-    conditionalEvent_readyGesture
-  );
+  bool anyConditionalEvent = false;
+  //  // conditionalEvent_strikerDetectedGoal ||
+  //  conditionalEvent_whistle ||
+  //  conditionalEvent_searcherSawBall ||
+  //  conditionalEvent_goalieSawBall ||
+  //  conditionalEvent_teamSawBallAfterAWhile ||
+  //  conditionalEvent_readyGesture
+  //);
 
   // Fire event!
   if (anyConditionalEvent) {

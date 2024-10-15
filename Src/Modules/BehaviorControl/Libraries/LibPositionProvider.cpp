@@ -58,6 +58,9 @@ void LibPositionProvider::update(LibPosition& libPosition)
   libPosition.myReadyPosition = [this]() -> Pose2f {
     return myReadyPosition();
   };
+  libPosition.isPositionInsideRectangle = [this](const Vector2f& position, const Vector2f& corner1, const Vector2f& corner2) -> bool {
+    return isPositionInsideRectangle(position, corner1, corner2);
+  };
 }
 
 bool LibPositionProvider::distanceToOwnGoalGreaterThan(float distance) const
@@ -149,20 +152,21 @@ Pose2f LibPositionProvider::myReadyPosition() const {
     liberoPose = Pose2f(0.f, 0.f, -1500.f);
   }
 
-  else if (theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber) { // kickoff 
-    strikerPose = Pose2f(0.f, -600.f, 0.f);
+  else{ // kickoff 
+    strikerPose = Pose2f(0.f, -1000.f, 0.f);
     supporterPose = Pose2f(0.f, -1500.f, 0.f);
-    receiverPose = Pose2f(0.f, -600.f, -2000.f);
-    liberoPose = Pose2f(0.f, -600.f, 2000.f);   
-
+    receiverPose = Pose2f(0.f, -500.f, -2000.f);
+    liberoPose = Pose2f(0.f, -500.f, 2000.f);   
   }
   
+  /*
   else{ // kickoff for opponent
     strikerPose = Pose2f(0.f, -1000.f, -250.f);
-    supporterPose = Pose2f(0.f, -2000.f, 250.f);
+    supporterPose = Pose2f(0.f, -2000.f, 1500.f);
     receiverPose = Pose2f(0.f, -1500.f, -1500.f);
-    liberoPose = Pose2f(0.f, -1500.f, 1500.f);
+    liberoPose = Pose2f(0.f, -2000.f, 250.f);
   }
+  */
 
 
   Pose2f target{};
@@ -193,6 +197,7 @@ Pose2f LibPositionProvider::myReadyPosition() const {
         activePlayers.push_back(i);
       else{
         inactivePlayers.push_back(i); //a non existing robot is given as penalized
+        //OUTPUT_TEXT("I'm " << theRobotInfo.number << " and " << i << " is inactive");
       }
     }
     const int numActivePlayers = activePlayers.size();
@@ -211,6 +216,7 @@ Pose2f LibPositionProvider::myReadyPosition() const {
         }
         inactiveIndex++;
       }
+      //OUTPUT_TEXT("I'm " << theRobotInfo.number << " and I substitute " << numberToSub);
       it = std::find(readyPlayerNums.begin(), readyPlayerNums.end(), numberToSub);
       index = it - readyPlayerNums.begin();
     }
@@ -219,4 +225,11 @@ Pose2f LibPositionProvider::myReadyPosition() const {
   }
   return target; 
 
+}
+
+bool LibPositionProvider::isPositionInsideRectangle(const Vector2f& position, const Vector2f& corner1, const Vector2f& corner2) const {
+  Vector2f min_point = Vector2f(std::min(corner1.x(), corner2.x()), std::min(corner1.y(), corner2.y()));
+  Vector2f max_point = Vector2f(std::max(corner1.x(), corner2.x()), std::max(corner1.y(), corner2.y()));
+
+  return position.x() > min_point.x() && position.x() < max_point.x() && position.y() > min_point.y() && position.y() < max_point.y();
 }

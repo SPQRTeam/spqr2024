@@ -193,13 +193,6 @@ namespace Skills
    */
   SKILL_INTERFACE(LookLeftAndRight, (bool)(true) startLeft, (Angle)(50_deg) maxPan, (Angle)(23_deg) tilt, (Angle)(100_deg) speed);
 
-
-  /**
-   * This skill moves the head in a V shape to find the ball
-   * @param speed The speed with which to move the head
-   */
-  SKILL_INTERFACE(LookForScan, (Angle)(100_deg) speed);
-
   /**
    * This skill moves the head in steps between the maximum pan and tilt, relative to the current orientation.
    * @param originalPan

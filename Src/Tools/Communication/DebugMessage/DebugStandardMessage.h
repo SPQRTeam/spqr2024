@@ -22,7 +22,9 @@ struct DebugStandardMessage : public DebugMessageTCM, public Streamable
   size_t sizeOfDebugMessage() const;
 
   // Method to convert this struct for communication usage
-  // @param data point to dataspace
+  // @param data point to dataspace,
+  //        THIS SHOULD BE AT LEAST AS BIG AS this->sizeOfBSPLMessage()
+  // -asserts: writing sizeOfBHMessage() bytes
   void write(void* data) const;
 
   // Method to reads the message from data.

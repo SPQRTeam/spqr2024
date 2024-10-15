@@ -27,11 +27,12 @@ STREAMABLE(MotionRobotHealth,
 /**
  * @struct RobotHealth
  * Full information about the robot.
- * Used to be sent over arbitrary message, but not anymore as of 2023.
- * See any version of our (SPQR) code during RoboCup 2024 to recover communication code.
  */
-STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
+STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth, COMMA public PureBHumanArbitraryMessageParticle<idRobotHealth>
 {
+  /** BHumanMessageParticle functions */
+  void operator>>(BHumanMessage& m) const override;
+  bool handleArbitraryMessage(InMessage& m, const std::function<unsigned(unsigned)>& toLocalTimestamp) override;
   /**
    * Configurations that can be deployed-
    * Note that they must start with an uppercase letter.

@@ -14,7 +14,7 @@
 #include <string>
 #define magic_value -999999
 
-STREAMABLE(PlayerRole, COMMA BHumanCompressedMessageParticle<PlayerRole>
+STREAMABLE(PlayerRole, COMMA BHumanCompressedMessageParticle<PlayerRole> // COMMA public PureBHumanArbitraryMessageParticle<idPlayerRole>
 {
   ENUM(RoleType,
   {,
@@ -23,8 +23,7 @@ STREAMABLE(PlayerRole, COMMA BHumanCompressedMessageParticle<PlayerRole>
     none, // we have a "none" as well. Maybe redundant w/ undefined? Should we pick one? [torch]
     goalkeeper, 
     ballplayer,
-
-
+    
     undefined,
 
     goalie,
@@ -41,6 +40,9 @@ STREAMABLE(PlayerRole, COMMA BHumanCompressedMessageParticle<PlayerRole>
     planJolly,
     activeSearcher,
     passiveSearcher,
+
+    autonomous,
+    controlled,
   });
 
   ENUM(Context,        tmp_role = PlayerRole::undefined;

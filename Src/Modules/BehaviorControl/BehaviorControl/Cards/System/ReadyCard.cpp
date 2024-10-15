@@ -24,12 +24,10 @@ CARD(ReadyCard,
   CALLS(Stand),
   CALLS(WalkPotentialField),
   CALLS(WalkToKickoffPose),
-  CALLS(Say),
   REQUIRES(BallSpecification),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(OwnTeamInfo),
-  REQUIRES(OpponentTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(LibPosition),
 });
@@ -49,7 +47,7 @@ class ReadyCard : public ReadyCardBase
   void execute() override
   {
     theActivitySkill(BehaviorStatus::ready);
-    theWalkToKickoffPoseSkill(theLibPosition.myReadyPosition());
+    theStandSkill();
   }
 };
 

@@ -10,6 +10,8 @@
 #include "Representations/BehaviorControl/Skills.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Modeling/RobotPose.h"
+#include "Representations/Communication/GameInfo.h"
+#include "Representations/Communication/TeamInfo.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
 #include "Tools/Math/BHMath.h"
@@ -24,6 +26,8 @@ CARD(GoalieCard,
   REQUIRES(FieldBall),
   REQUIRES(FieldDimensions),
   REQUIRES(RobotPose),
+  REQUIRES(GameInfo),
+  REQUIRES(OwnTeamInfo),
   DEFINES_PARAMETERS(
   {,
     (float)(0.8f) walkSpeed,

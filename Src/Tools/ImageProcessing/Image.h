@@ -54,6 +54,10 @@ public:
     return *this;
   }
 
+  Pixel* getImage(){
+    return image;
+  }
+
   Pixel* operator[](const size_t y) { return image + y * width; }
   const Pixel* operator[](const size_t y) const { return image + y * width; }
   Pixel& operator[](const Vector2s& p) { return image[p.y() * width + p.x()]; }

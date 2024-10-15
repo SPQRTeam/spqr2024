@@ -87,13 +87,12 @@ void WhistleDetector::detect_whistle(Whistle& whistle) {
     if (samplesLeft == 0) {
       whistle.detectionState = Whistle::DetectionState::notDetected;
       samplesLeft = windowSize / 2;
+      float* output = nullptr;
       float ampSum = compute_amplitudes();
       checkMics(ampSum);
       compute_fft(); 
       overtone_detection(); 
-      
-      whistleNet->infer(input.data(), output.data());
-      nnConfidence = output[0];
+      nn_inference();
 
       //Merge NN, PM and limit information
       float confidence = ((nnWeight * nnConfidence + pmWeight * pmConfidence) / (nnWeight + pmWeight)) * (1 - (limitWeight * relLimitCount));
@@ -144,6 +143,13 @@ void WhistleDetector::detect_whistle(Whistle& whistle) {
       }
     }
   }
+}
+
+void WhistleDetector::nn_inference() {
+  Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input.data(), input.size(), input_shape.data(), input_shape.size());
+  Ort::Value output_tensor = Ort::Value::CreateTensor<float>(memory_info, output.data(), output.size(), output_shape.data(), output_shape.size());
+  session->Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, &output_tensor, 1);
+  nnConfidence = output[0];
 }
 
 float WhistleDetector::compute_amplitudes() {
@@ -272,7 +278,10 @@ void WhistleDetector::setup() {
   std::string filename = std::string(File::getBHDir()) + whistleNetPath;
   oldWhistleNetPath = whistleNetPath;
 
-  whistleNet = new OnnxHelper<float, float>(filename);
+  env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "Default"};
+  session = std::make_unique<Ort::Session>(env, filename.c_str(), Ort::SessionOptions{nullptr});
+  numInputNodes = session->GetInputCount();
+  numOutputNodes = session->GetOutputCount();
 
   // Setup buffers for pre- and post-processing
   int input_size = 513;

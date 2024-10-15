@@ -1,7 +1,9 @@
 /**
  * @file LibJollyProvider.cpp
  * 
- * This file implements a module that computes the jolly position.
+ * See LibJolly
+ *
+ * @author Francesco Petri
  */
 
 #include "LibJollyProvider.h"
@@ -9,32 +11,39 @@
 MAKE_MODULE(LibJollyProvider, behaviorControl);
 
 LibJollyProvider::LibJollyProvider(){
-  // Load the graphs from file
   char dirGraphJollyName[260];
   char dirGraphCentralName[260];
   sprintf(dirGraphJollyName, "%s/Config/Graphs/positionGraphJolly.txt", File::getBHDir());
   sprintf(dirGraphCentralName, "%s/Config/Graphs/positionGraphCentral.txt", File::getBHDir());
+
   jollyPositionGraph.loadFromFile(dirGraphJollyName);
   centralPositionGraph.loadFromFile(dirGraphCentralName);
 
-  // Initialize the current target
-  current_target = jollyPositionGraph.getClosestNode(theRobotPose.translation)->getPosition();
+  current_target = new Vector2f(0,0);
+  *current_target = jollyPositionGraph.getClosestNode(theRobotPose.translation)->getPosition();
 }
 
 void LibJollyProvider::update(LibJolly& libJolly)
 {
-  libJolly.jollyPosition = getJollyPosition();
-
-  DECLARE_DEBUG_DRAWING3D("module:LibJollyProvider:jollyPosition", "field");
-  if(thePlayerRole.role == PlayerRole::jolly){
-    CYLINDER3D("module:LibJollyProvider:jollyPosition", libJolly.jollyPosition.x(), libJolly.jollyPosition.y(), 0.0f, 0.0f, 0.0f, 0.0f, 50.0f, 20.0f, ColorRGBA::green);
-  }
+  DECLARE_DEBUG_DRAWING3D("module:LibJollyProvider:jollyUtility", "field");
+  DECLARE_DEBUG_DRAWING3D("module:UndirectedGraph", "field");
+  libJolly.getJollyPosition = [this]() -> Vector2f {
+    return getJollyPosition();
+  };
+  libJolly.getJollyPositionSpecial = [this]() -> Vector2f {
+    return getJollyPositionSpecial();
+  };
+  libJolly.getJollyPositionGraph = [this]() -> Vector2f {
+    return getJollyPositionGraph();
+  };
 }
 
-GlobalVector2f LibJollyProvider::getJollyPosition() {
-  GlobalVector2f target;
+
+Vector2f LibJollyProvider::getJollyPosition() {
+
+  Vector2f target;
   
-  // Free kick
+  // If it's a freeKick situation
   if(theGameState.state == GameState::State::ownCorner          ||
      theGameState.state == GameState::State::ownGoalKick        ||
      theGameState.state == GameState::State::ownKickIn          ||
@@ -48,34 +57,30 @@ GlobalVector2f LibJollyProvider::getJollyPosition() {
   ){
     target = getJollyPositionSpecial();
   }
-
-  // Normal play (use the graph)
   else{
     target = LibJollyProvider::getJollyPositionGraph();
   }
-
-  return target.hasNaN() ? GlobalVector2f(0.f, 1000.f) : target;
+  return target.hasNaN() ? Vector2f(0.f, 1000.f) : target;
 }
 
-GlobalVector2f LibJollyProvider::getJollyPositionGraph() {
-  // Choose the current graph depending on the ball position
-  GlobalVector2f ball_position = theFieldBall.teamPositionOnField;
+
+Vector2f LibJollyProvider::getJollyPositionGraph() {
+
+  Vector2f ball_position = theFieldBall.teamPositionOnField;
   bool is_jolly_graph_valid = !jollyPositionGraph.checkPointInsideGraphRectangle(ball_position);
   bool is_central_graph_valid = !centralPositionGraph.checkPointInsideGraphRectangle(ball_position);
-  spqr::UndirectedGraph current_graph = (!is_jolly_graph_valid && is_central_graph_valid) ? centralPositionGraph : jollyPositionGraph;
 
-  // Get the closest node of the graph to the robot
+  spqr::UndirectedGraph current_graph = (!is_jolly_graph_valid && is_central_graph_valid) ? centralPositionGraph : jollyPositionGraph;
   const spqr::Node *current_node = current_graph.getClosestNode(theRobotPose.translation);
 
-  // Find the best node to go to using the passage utility
   const spqr::Node *best_node = current_node;
   float best_passage_utility = theLibPass.getInversePassUtility(current_node->getPosition());
 
   float current_hysteresis = hysteresis_utility;
   for (spqr::Node * neighbor : current_node->getNeighbors()){
-    float neighbor_utility = theLibPass.getInversePassUtility(neighbor->getPosition());
 
-    // Update the best node if the utility is higher than the current best node + hysteresis
+    float neighbor_utility = theLibPass.getInversePassUtility(neighbor->getPosition());
+    
     if (neighbor_utility > best_passage_utility + current_hysteresis){
       best_node = neighbor;
       best_passage_utility = neighbor_utility;
@@ -83,54 +88,57 @@ GlobalVector2f LibJollyProvider::getJollyPositionGraph() {
     }
   }
 
-  // Update the current target if the hysteresys time has passed
   if(theFrameInfo.getTimeSince(last_time_modified_node) > hysteresis_time){
-    current_target = best_node->getPosition();
+    *current_target = best_node->getPosition();
     last_time_modified_node = theFrameInfo.time;
   }
 
-  return current_target.hasNaN() ? GlobalVector2f(0.f, 1000.f) : current_target;
+  Vector2f target = *current_target;
+
+  return target;
 }
 
-GlobalVector2f LibJollyProvider::getJollyPositionSpecial() {
-  GlobalVector2f target = GlobalVector2f(1000.f, 0.f);
-  GlobalVector2f bestBall = theFieldBall.recentBallPositionOnField();
+// per il ownCorner usa la funzione fatta ad hoc,
+// per tutti gli altri ownFreeKicks usa default,
+// per gli opponentFreeKicks fai funzione che controlla se la posizione è troppo vicina alla palla
+Vector2f LibJollyProvider::getJollyPositionSpecial() {
+  Vector2f target = Vector2f(1000.f, 0.f);
+  Vector2f bestBall = theFieldBall.recentBallPositionOnField();
 
-  // Own corner
   if(theGameState.state==GameState::State::ownCorner){
     std::tuple<float, float> angles = theLibSpec.calcAngleCorner();
     float angle_to_kick = std::get<0>(angles);
     float radius = 2500;
     target = theLibSpec.targetCornerPoint(angle_to_kick, radius);
   }
-
-  // Opponent goal kick
   else if(theGameState.state == GameState::State::opponentGoalKick){
-    target = GlobalVector2f(750.0, 2200.0);
+    Vector2f ball = theFieldBall.recentBallPositionOnField();
+    (ball.y() > 0) ? target = ball - Vector2f(1000.f, 0.f) : target = Vector2f(theFieldDimensions.xPosOpponentPenaltyMark, theFieldDimensions.yPosCenterGoal);
   }
-
-  // Normal position (using the graph) with check if the position is too near to the ball (to avoid penelties)
   else{
     target = getJollyPositionGraph();
+    // Check if this position is too near to the ball during free kick.
+    // In this case, move the point back/left/right/forward
     if((theFieldBall.recentBallPositionOnField() - target).norm() < 800.f){
-      if(theFieldDimensions.isInsideField(target-GlobalVector2f(800.f,0.f)) &&
-        (theFieldBall.recentBallPositionOnField() - (target-GlobalVector2f(800.f,0.f))).norm() < 800.f){
-        target = target - GlobalVector2f(800.f, 0.f);
+      if(theFieldDimensions.isInsideField(target-Vector2f(800.f,0.f)) &&
+        (theFieldBall.recentBallPositionOnField() - (target-Vector2f(800.f,0.f))).norm() < 800.f){
+        target = target - Vector2f(800.f, 0.f);
       }
-      else if(theFieldDimensions.isInsideField(target-GlobalVector2f(0.f,800.f)) &&
-        (theFieldBall.recentBallPositionOnField() - (target-GlobalVector2f(0.f,800.f))).norm() < 800.f){
-        target = target - GlobalVector2f(0.f, 800.f);
+      else if(theFieldDimensions.isInsideField(target-Vector2f(0.f,800.f)) &&
+        (theFieldBall.recentBallPositionOnField() - (target-Vector2f(0.f,800.f))).norm() < 800.f){
+        target = target - Vector2f(0.f, 800.f);
       }
-      else if(theFieldDimensions.isInsideField(target+GlobalVector2f(0.f,800.f)) &&
-        (theFieldBall.recentBallPositionOnField() - (target+GlobalVector2f(0.f,800.f))).norm() < 800.f){
-        target = target + GlobalVector2f(0.f, 800.f);
+      else if(theFieldDimensions.isInsideField(target+Vector2f(0.f,800.f)) &&
+        (theFieldBall.recentBallPositionOnField() - (target+Vector2f(0.f,800.f))).norm() < 800.f){
+        target = target + Vector2f(0.f, 800.f);
       }
       else{
-        target = target + GlobalVector2f(800.f, 0.f); 
+        target = target + Vector2f(800.f, 0.f); 
       }
     }
   }
 
-  return target.hasNaN() ? GlobalVector2f(0.f, 1000.f) : target;
+  
+  return target;
 }
 

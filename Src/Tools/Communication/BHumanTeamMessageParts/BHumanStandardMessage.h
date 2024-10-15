@@ -17,6 +17,8 @@
 #define BHUMAN_STANDARD_MESSAGE_STRUCT_VERSION 13      /**< This should be incremented with each change. */
 #define BHUMAN_STANDARD_MESSAGE_MAX_NUM_OF_PLAYERS 8   /**< The maximum number of players per team. */
 
+#define BHUMAN_MESSAGE_INCLUDE_HEADER false
+
 /** The definintion of an NTP message we send - in response to a previously received request. */
 STREAMABLE(BNTPMessage,
 {,
@@ -54,6 +56,11 @@ STREAMABLE(BHumanStandardMessage,
   /** Constructor. */
   BHumanStandardMessage(),
 
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+  (char[4]) header,         /**< BHUMAN_STANDARD_MESSAGE_STRUCT_HEADER */
+  (uint8_t) version,        /**< BHUMAN_STANDARD_MESSAGE_STRUCT_VERSION */
+  (uint8_t)(0) magicNumber, /**< The magic number. */
+  #endif
   (unsigned)(0) timestamp,  /**< Timestamp when this message has been sent (relative to the clock frame of the sending robot). */
 
   (bool)(false) requestsNTPMessage,       /**< Whether this robot requests NTP replies from the others. */

@@ -1,0 +1,101 @@
+#! /bin/bash
+
+# Usage: ./deploy <compile_mode> <network_type> <additional_parameters_for_copyfiles>
+
+help()
+{
+    echo "Usage: deploy Debug|Develop|Release ethernet|wifi [...]"
+    echo
+    echo "Reads formation.conf and calls copyfiles for each robot in that file with the proper -r numbers."
+    echo
+    echo "First argument supports some abbreviations: dbg, bug, dev, rls, rel"
+    echo "Second argument accepts alternative names such as ethr, lan, cable for ethernet, and wireless for wifi"
+    echo
+    echo "Anything given after the two positional arguments will be given as-is to all copyfiles calls. Use this to issue -v, -b, etc."
+}
+
+# check if arg is help or script was called w/ no arg
+if [[ $1 == "-h" ]] || [[ $1 == "--help" ]] || [ -z $1 ]
+then
+    help
+    exit 0
+fi
+
+FORM_FILE="formation.conf"
+COPYFILES="../Make/Linux/deployspqr"
+
+# custom filename
+if [[ $1 == "-i" ]] || [[ $1 == "--input" ]] || [ -z $1 ]
+then
+    shift
+    FORM_FILE="$1"
+    echo "Selected infile $FORM_FILE"
+    shift
+fi
+
+mode=""
+address_prefix=""
+extra=""
+
+if ! [ -f "$FORM_FILE" ]
+then
+    echo "  !!!  NO FORMATION FILE  !!!  "
+fi
+
+case $1 in
+    Debug | debug | dbg | DBG | bug | BUG)
+        mode="Debug"
+        ;;
+    Develop | develop | dev | DEV)
+        mode="Develop"
+        ;;
+    Release | release | rls | RLS | rel | REL)
+        mode="Release"
+        ;;
+    *)
+        echo "  !!!  UNKNOWN COMPILE MODE: $1  !!!  "
+esac
+
+case $2 in
+        eth | ethr | ethernet | lan | cable)
+            address_prefix="192.168.19."
+            ;;
+        wifi | wireless)
+            address_prefix="10.0.19."
+            ;;
+        *)
+            echo "  !!!  UNKNOWN NETWORK TYPE: $2  !!!"
+            ;;
+esac
+
+shift
+shift
+
+extra=$@
+
+# follow a convoluted path b/c this is the only way I could make it work
+
+# prepare array of quoted strings
+declare -a lines
+while IFS= read -r line; do
+  lines+=("$line")
+done < $FORM_FILE
+
+robots=""
+# build up the -r options
+for line in "${lines[@]}"; do
+  echo $line
+  tokenized=( $line )     # splits line over spaces
+  number=${tokenized[0]}
+  if [[ ${tokenized[1]} == "--" ]]; then
+    echo "Skipped"
+  else
+    ip=${address_prefix}${tokenized[1]}
+    # tokenized[2] is the name, irrelevant
+    # add a new -r
+    robots="${robots} -r $number $ip"
+  fi
+done
+
+# do the big deploy
+$COPYFILES $mode $robots $extra

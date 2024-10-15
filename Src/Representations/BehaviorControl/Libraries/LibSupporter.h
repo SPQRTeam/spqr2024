@@ -1,7 +1,9 @@
 /**
  * @file LibSupporter.h
  *
- * This file defines a representation that holds the supporter position.
+ * This file defines a representation that holds some utilities (primarily) for the supporter.
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
@@ -12,7 +14,9 @@
 
 STREAMABLE(LibSupporter,
 {
-  GlobalVector2f supporterPosition; // Target point of the Supporter in global coordinates
-
-  , // always put a comma at the end 
+  /** 
+   * Provides the supporter reference position
+   */
+  FUNCTION(Vector2f()) getSupporterPosition;
+  ,
 });

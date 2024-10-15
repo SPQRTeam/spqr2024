@@ -12,7 +12,6 @@
 #include "Representations/BehaviorControl/PathPlanner.h"
 #include "Representations/BehaviorControl/Skills.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/BallModel.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Tools/BehaviorControl/Framework/Skill/Skill.h"
 #include "Tools/BehaviorControl/Framework/Skill/CabslSkill.h"
@@ -24,11 +23,10 @@ SKILL_IMPLEMENTATION(GoToBallAndDribbleImpl,
   REQUIRES(LibWalk),
   REQUIRES(PathPlanner),
   REQUIRES(RobotPose),
-  REQUIRES(BallModel),
   REQUIRES(FrameInfo),
   MODIFIES(BehaviorStatus),
   CALLS(GoToBallHeadControl),
-  CALLS(LookForScan),
+  CALLS(LookLeftAndRight),
   CALLS(Dribble),
   CALLS(RecordTargetAndSpeed),
   CALLS(Stand),
@@ -46,7 +44,7 @@ class GoToBallAndDribbleImpl : public GoToBallAndDribbleImplBase
     Pose2f dribblePose(p.targetDirection, theFieldBall.endPositionRelative);
 
     theRecordTargetAndSpeedSkill(dribblePose.translation, 1.f);     
-    if(theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen) > 500) theLookForScanSkill(150_deg);
+    if(theFieldBall.timeSinceBallWasSeen>1000) theLookLeftAndRightSkill(true, 0.5, 0.4, 1.7);
     else theGoToBallHeadControlSkill(dribblePose.translation.norm());
     
     initial_state(dribbleFarRange)
@@ -59,6 +57,7 @@ class GoToBallAndDribbleImpl : public GoToBallAndDribbleImplBase
 
       action
       {
+        //theStandSkill();
         auto obstacleAvoidance = thePathPlanner.plan(theRobotPose * dribblePose, Pose2f(1.f, 1.f, 1.f));
         theDribbleSkill(p.targetDirection, Pose2f(1.f, 1.f, 1.f), obstacleAvoidance, p.alignPrecisely, p.kickPower, p.preStepAllowed, p.turnKickAllowed, p.directionPrecision);
       }

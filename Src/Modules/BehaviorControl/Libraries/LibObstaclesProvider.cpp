@@ -32,29 +32,11 @@ void LibObstaclesProvider::update(LibObstacles& libObstacles)
   libObstacles.obstacleExistsAroundPoint = [this](const Vector2f& point) -> bool {
     return obstacleExistsAroundPoint(point);
   };
-  libObstacles.nearestOpponentToPoint = [this](const GlobalVector2f& point) -> GlobalPose2f {
-    return nearestOpponentToPoint(point);
-  };
-}
-
-GlobalPose2f LibObstaclesProvider::nearestOpponentToPoint(const GlobalVector2f& p) const {
-  LocalVector2f lPoint(theLibMisc.glob2Rel(p.x(), p.y()).translation);
-
-  auto criterion = [](const Obstacle& a, const Obstacle& b) {
-    return a.center.norm() < b.center.norm() && a.type == Obstacle::opponent && b.type == Obstacle::opponent;
-  };
-
-  auto min = std::min_element(theObstacleModel.obstacles.begin(), theObstacleModel.obstacles.end(), criterion);
-
-  if(min != theObstacleModel.obstacles.end())
-    return theLibMisc.rel2Glob_v(min->center);
-  else
-    return InvalidGlobalPose2f;
 }
 
 
 Pose2f LibObstaclesProvider::nearestOpponent() const {
-  Pose2f nearest = InvalidGlobalPose2f;
+  Pose2f nearest = Pose2f(9000.f,6000.f);
   for(const auto& obs : theObstacleModel.obstacles){
     if( (obs.center.norm() < nearest.translation.norm()) && obs.type == Obstacle::opponent) {
       nearest = obs.center;
@@ -64,7 +46,7 @@ Pose2f LibObstaclesProvider::nearestOpponent() const {
 }
 
 Pose2f LibObstaclesProvider::nearestOpponentWithFilter(std::function<bool(Obstacle)> filterPredicate) const {
-  Pose2f nearest = InvalidGlobalPose2f;
+  Pose2f nearest = Pose2f(9000.f,6000.f);
   for(const auto& obs : theObstacleModel.obstacles){
     if(filterPredicate(obs) && (obs.center.norm() < nearest.translation.norm()) && obs.type == Obstacle::opponent) {
       nearest = obs.center;
@@ -77,7 +59,7 @@ bool LibObstaclesProvider::areThereOpponentsNearby(const Vector2f& point, float 
   bool dangerFlag = false;
   for(const auto& obs : theObstacleModel.obstacles)
   {
-    if(obs.type == Obstacle::Type::opponent && (point-obs.center).norm()<=radius)
+    if(obs.type == Obstacle::Type::opponent && theLibMisc.distance(point, obs.center)<=radius)
     {
       dangerFlag = true;
       break;
@@ -90,7 +72,7 @@ bool LibObstaclesProvider::areThereTeammatesNearby(const Vector2f& point, float 
   bool flag = false;
   for(const auto& obs : theObstacleModel.obstacles)
   {
-    if(obs.type == Obstacle::Type::teammate && (point-obs.center).norm()<=radius)
+    if(obs.type == Obstacle::Type::teammate && theLibMisc.distance(point, obs.center)<=radius)
     {
       flag = true;
       break;

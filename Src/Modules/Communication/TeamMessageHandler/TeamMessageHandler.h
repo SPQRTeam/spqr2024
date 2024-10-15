@@ -31,6 +31,7 @@
 #include "Tools/Communication/RobotStatus.h"
 #include "Representations/BehaviorControl/PlayerRole.h"
 #include "Representations/Communication/MessageManagement.h"
+#include "Representations/Challenge/HumanCommand.h"
 
 //temp
 //#include "Representations/Communication/TeamInfo.h"
@@ -49,13 +50,19 @@ MODULE(TeamMessageHandler,
   REQUIRES(FallDownState),
   REQUIRES(GroundContactState),
   USES(RobotInfo),
+  USES(HumanCommand),
 
   // send directly
   USES(BallModel),
-
+  // USES(BehaviorStatus),
+  // USES(FieldCoverage),
+  // REQUIRES(FieldFeatureOverview),
   USES(ObstacleModel),
   USES(DiscretizedObstacleModel),
+  // USES(RobotHealth),
   USES(RobotPose),
+  // USES(TeamBehaviorStatus),
+  // USES(TeamTalk),
   USES(Whistle),
   USES(PlayerRole),
   USES(RefereeEstimator),
@@ -91,8 +98,8 @@ private:
 
   oldMessages oldMessagesInstance;
   
-  // eliminated the attempt at the similarity function some thesis student did with us (SPQR).
-  // if needed, get the version of this code used at RoboCup 2024.
+  bool isDifferent(BHumanMessageOutputGenerator& outputGenerator);
+  int count_opponents(std::vector<Obstacle> obstacles);
   
   BNTP theBNTP;
   mutable RobotStatus theRobotStatus;

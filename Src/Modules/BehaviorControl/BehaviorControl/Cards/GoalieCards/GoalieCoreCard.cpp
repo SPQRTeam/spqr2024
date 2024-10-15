@@ -5,17 +5,22 @@
 #include "Representations/BehaviorControl/Libraries/LibCheck.h"
 #include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/Modeling/BallModel.h"
+#include "Representations/Communication/TeamData.h"
 #include "Representations/Modeling/TeamBallModel.h"
 #include "Representations/BehaviorControl/Libraries/LibTeam.h"
 #include "Representations/Communication/GameInfo.h"
+#include "Representations/Communication/RobotInfo.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
 #include "Representations/spqr_representations/ConfigurationParameters.h"
+#include "Representations/Challenge/HumanCommand.h"
 #include "Representations/MotionControl/KeyframeMotionRequest.h"
 #include "Tools/Math/BHMath.h"
+#include "Representations/Communication/TeamInfo.h"
 #include <iostream>
 #include "Tools/BehaviorControl/Interception.h"
 #include "Representations/BehaviorControl/PlayerRole.h"
+#include "Representations/BehaviorControl/KickoffState.h"
 using namespace std;
 
 #define goalieLine 220
@@ -36,16 +41,22 @@ CARD(GoalieCoreCard,
   CALLS(TurnToPoint),
   CALLS(WalkAtAbsoluteSpeed),
   CALLS(LookAtGlobalBall),
+  CALLS(GoToBallAndKick),
   REQUIRES(FieldBall),
   REQUIRES(FieldDimensions),
+  REQUIRES(OwnTeamInfo),
   REQUIRES(LibTeam),
   REQUIRES(RobotPose),
   REQUIRES(BallModel),
   REQUIRES(TeamBallModel),
   REQUIRES(GameInfo),
+  REQUIRES(TeamData),
   REQUIRES(LibMisc),
   REQUIRES(LibCheck),
   REQUIRES(PlayerRole),
+  REQUIRES(KickoffState),
+  REQUIRES(RobotInfo),
+  REQUIRES(HumanCommand),
   DEFINES_PARAMETERS(
   {,
     (int)(5000) ballSeenTimeout,
@@ -57,17 +68,19 @@ class GoalieCoreCard : public GoalieCoreCardBase
 
   bool preconditions() const override
   {
-    return true;  
+    // if kickoff is for opponent, we are in defending session
+    int kickingteam = theGameInfo.kickingTeam;
+    return theRobotInfo.number == RobotInfo::RoleNumber::autonomous && theGameInfo.kickingTeam != theOwnTeamInfo.teamNumber;
   }
 
   bool postconditions() const override
   {
-    return true;
+    return !preconditions();
   }
 
   option
   {
-    theActivitySkill(BehaviorStatus::goalieCore);
+    theActivitySkill(BehaviorStatus::Autonomous);
     initial_state(start)
     {
       transition
@@ -75,12 +88,14 @@ class GoalieCoreCard : public GoalieCoreCardBase
         #ifdef PENALTY_STRIKER_GOALIE            
           goto goaliePose;
         #endif
-          goto loop;               
+          goto loop;
+        if(shouldPass())
+          goto pass;               
       }
       action
       {
         theStandSkill();
-        LocalPose2f globalBall = theLibMisc.glob2Rel(theTeamBallModel.position.x(),theTeamBallModel.position.y());
+        Pose2f globalBall = theLibMisc.glob2Rel(theTeamBallModel.position.x(),theTeamBallModel.position.y());
         theLookAtPointSkill(Vector3f(globalBall.translation.x(), globalBall.translation.y(), 0));
         
       }
@@ -92,6 +107,8 @@ class GoalieCoreCard : public GoalieCoreCardBase
       {
         if( state_time>100)
           goto loop;
+        if(shouldPass())
+          goto pass; 
       }
       action
       {
@@ -125,12 +142,14 @@ class GoalieCoreCard : public GoalieCoreCardBase
         }
         #ifdef PENALTY_STRIKER_GOALIE  
         }
-        #endif     
+        #endif  
+        if(shouldPass())
+          goto pass;    
       }
         
       action{
         Vector2f globalBallPos = theFieldBall.recentBallPositionOnField();
-        float clippedy = clip(globalBallPos.y(), theFieldDimensions.yPosRightGoal + 200.f, theFieldDimensions.yPosLeftGoal - 200.f);
+        float clippedy = clip(globalBallPos.y(), theFieldDimensions.yPosRightGoal, theFieldDimensions.yPosLeftGoal);
         Vector2f globalTarget = Vector2f(theFieldDimensions.xPosOwnGroundLine+goalieLine, clippedy);
 
         if(theLibTeam.timeSinceBallWasSeen < 2000 || thePlayerRole.current_context != thePlayerRole.search_for_ball){
@@ -203,6 +222,31 @@ class GoalieCoreCard : public GoalieCoreCardBase
         else theLookAtGlobalBallSkill();
       } 
     }
+
+state(pass)
+    {
+      transition
+      {
+        if(!shouldPass())
+          goto loop;
+      }
+
+      action
+      {
+        Vector2f target = theTeamData.teammates[0].theRobotPose.translation;
+        float distance = theLibMisc.distance(target, theRobotPose);
+        theGoToBallAndKickSkill(theLibMisc.calcAngleToTarget(target), KickInfo::KickType::walkForwardsLeftLong, true, distance);
+        theLookAtBallSkill();
+      }
+    }
+  }
+
+  bool shouldPass() const{
+    if(theTeamData.teammates.size() > 0){
+      bool result = theTeamData.teammates[0].theHumanCommand.commandBody == HumanCommand::CommandBody::AskForTheBall;
+      return result;
+    }
+    return false;
   }
 };
 

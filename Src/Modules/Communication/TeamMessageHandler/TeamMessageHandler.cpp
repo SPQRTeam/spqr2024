@@ -17,20 +17,54 @@
 //#define SITTING_TEST
 //#define SELF_TEST
 
+#define INCLUDE_BHUMAN_ARBITRARY_MESSAGE false
+#define USE_SIMILARITY_FUNCTION false
+
 using namespace std;
 
 
 MAKE_MODULE(TeamMessageHandler, communication);
 
-// BNTP, RobotStatus, RobotPose, RobotHealth and FieldFeatureOverview cannot be part of this for technical reasons.
+// BNTP, RobotStatus, RobotPose, FieldCoverage, RobotHealth and FieldFeatureOverview cannot be part of this for technical reasons.
 #define FOREACH_TEAM_MESSAGE_REPRESENTATION(_) \
   _(FrameInfo); \
   _(BallModel); \
   _(DiscretizedObstacleModel); \
   _(Whistle); \
-  _(RefereeEstimator);
+  _(RefereeEstimator); \
+  _(HumanCommand);
 
 struct TeamMessage{};
+
+int TeamMessageHandler::count_opponents(vector<Obstacle> obstacles){
+  int num_opponents = 0;
+  for (auto obstacle:obstacles){
+    if (obstacle.isOpponent()){
+      ++num_opponents;
+    }
+  }
+  return num_opponents;
+}
+
+bool TeamMessageHandler::isDifferent(BHumanMessageOutputGenerator& outputGenerator){
+  Vector2f RobotPose_difference = oldMessagesInstance.RobotPose - theRobotPose.translation;
+  Vector2f BallPose_difference = oldMessagesInstance.BallPosition - theBallModel.estimate.position;
+  int new_num_opponents = count_opponents(theObstacleModel.obstacles);
+  
+  bool time_condition = (outputGenerator.timeLastSent < theFrameInfo.time);
+  bool opponents_condition = (oldMessagesInstance.num_opponents != new_num_opponents);
+  bool RobotPose_condition = (RobotPose_difference.norm() > oldMessagesInstance.Rob_movement_Treshold);
+  bool BallPose_condition = (BallPose_difference.norm() > oldMessagesInstance.Ball_pos_movement_Threshold);
+  
+  if (time_condition && (opponents_condition|| RobotPose_condition || BallPose_condition)){
+      
+      oldMessagesInstance.num_opponents = new_num_opponents;
+      oldMessagesInstance.RobotPose = theRobotPose.translation;
+      oldMessagesInstance.BallPosition = theBallModel.estimate.position;   
+      return true;
+  }
+  return false;
+}
 
 void TeamMessageHandler::regTeamMessage()
 {
@@ -64,6 +98,8 @@ TeamMessageHandler::TeamMessageHandler() :
 }
 
 void TeamMessageHandler::update(BHumanMessageOutputGenerator& outputGenerator){
+  
+  outputGenerator.theBHumanArbitraryMessage.queue.clear();
 
   bool sendDueToConditionalEvent = theMessageManagement.lastEventTS > outputGenerator.timeLastSent;
 
@@ -80,8 +116,7 @@ void TeamMessageHandler::update(BHumanMessageOutputGenerator& outputGenerator){
     (
       theFrameInfo.getTimeSince(outputGenerator.timeLastSent) >= theMessageManagement.sendInterval ||      // periodic
       theFrameInfo.time < outputGenerator.timeLastSent ||    // for the first packet
-      sendDueToConditionalEvent ||
-      theRawGameInfo.gamePhase == STATE_STANDBY
+      sendDueToConditionalEvent
     );
   // don't send ANYTHING if in out-of-packets emergency mode
   if (theMessageManagement.outOfPackets) {
@@ -94,6 +129,15 @@ void TeamMessageHandler::update(BHumanMessageOutputGenerator& outputGenerator){
     theRobotStatus.timeOfLastGroundContact = theFrameInfo.time;
   if(theRobotStatus.isUpright)
     theRobotStatus.timeWhenLastUpright = theFrameInfo.time;
+
+
+  // if(sendDueToConditionalEvent == true || isDifferent(outputGenerator) || theFrameInfo.getTimeSince(timeLastSent) > 30000){
+  //   outputGenerator.generate = [this, &outputGenerator,sendDueToConditionalEvent](RoboCup::SPLStandardMessage* const m)
+  //   {
+  //     generateMessage(outputGenerator);
+  //     writeMessage(outputGenerator, m, sendDueToConditionalEvent);
+  //   };
+  // }
 
   outputGenerator.generate = [this, &outputGenerator,sendDueToConditionalEvent](RoboCup::SPLStandardMessage* const m)
   {
@@ -108,12 +152,28 @@ void TeamMessageHandler::generateMessage(BHumanMessageOutputGenerator& outputGen
   the##particle >> outputGenerator
 
   outputGenerator.theBSPLStandardMessage.playerNum = static_cast<uint8_t>(theRobotInfo.number);
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  outputGenerator.theBSPLStandardMessage.teamNum = static_cast<uint8_t>(Global::getSettings().teamNumber);
+  #endif
+
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+  outputGenerator.theBHumanStandardMessage.magicNumber = Global::getSettings().magicNumber;
+  #endif
 
   outputGenerator.theBHumanStandardMessage.timestamp = Time::getCurrentSystemTime();
 
   theRobotStatus.isPenalized = theRobotInfo.penalty != PENALTY_NONE;
   // The other members of theRobotStatus are filled in the update method.
   theRobotStatus.sequenceNumbers.fill(-1);
+  #if KEEP_FULL_ROBOT_STATUS
+  for(const Teammate& teammate : theTeamData.teammates)
+    theRobotStatus.sequenceNumbers[teammate.number - Settings::lowestValidPlayerNumber] = teammate.sequenceNumber;
+  theRobotStatus.sequenceNumbers[theRobotInfo.number - Settings::lowestValidPlayerNumber] = outputGenerator.sentMessages % 15;
+  #endif
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  outputGenerator.theBSPLStandardMessage.fallen = !theRobotStatus.hasGroundContact || !theRobotStatus.isUpright;
+  #endif
 
   outputGenerator.theBHumanStandardMessage.compressedContainer.reserve(SPL_STANDARD_MESSAGE_DATA_SIZE);
   CompressedTeamCommunicationOut stream(outputGenerator.theBHumanStandardMessage.compressedContainer, outputGenerator.theBHumanStandardMessage.timestamp,
@@ -139,10 +199,22 @@ void TeamMessageHandler::generateMessage(BHumanMessageOutputGenerator& outputGen
 
   FOREACH_TEAM_MESSAGE_REPRESENTATION(SEND_PARTICLE);
 
+  // SEND_PARTICLE(FieldCoverage);
+
+  //Send this last, because it is unimportant for robots, (so it is ok, if it gets dropped)
+  // SEND_PARTICLE(RobotHealth);
+  // SEND_PARTICLE(FieldFeatureOverview);   // Non è mai ricevuto?!
+
   outputGenerator.theBHumanStandardMessage.out = nullptr;
 
+  #if INCLUDE_BHUMAN_ARBITRARY_MESSAGE
+  outputGenerator.theBSPLStandardMessage.numOfDataBytes =
+    static_cast<uint16_t>(outputGenerator.theBHumanStandardMessage.sizeOfBHumanMessage()
+                          + outputGenerator.theBHumanArbitraryMessage.sizeOfArbitraryMessage());
+  #else
   outputGenerator.theBSPLStandardMessage.numOfDataBytes =
     static_cast<uint16_t>(outputGenerator.theBHumanStandardMessage.sizeOfBHumanMessage());
+  #endif
 }
 
 void TeamMessageHandler::writeMessage(BHumanMessageOutputGenerator& outputGenerator, RoboCup::SPLStandardMessage* const m, bool sendDueToConditionalEvent) const{ 
@@ -157,14 +229,54 @@ void TeamMessageHandler::writeMessage(BHumanMessageOutputGenerator& outputGenera
 
   const int offset = outputGenerator.theBHumanStandardMessage.sizeOfBHumanMessage();
 
+  #if INCLUDE_BHUMAN_ARBITRARY_MESSAGE
+
+  const int restBytes = SPL_STANDARD_MESSAGE_DATA_SIZE - offset;
+
+  int sizeOfArbitraryMessage;
+  if((sizeOfArbitraryMessage = outputGenerator.theBHumanArbitraryMessage.sizeOfArbitraryMessage()) > restBytes)
+  {
+    OUTPUT_ERROR("outputGenerator.theBHumanArbitraryMessage.sizeOfArbitraryMessage() > restBytes "
+                 "-- with size of " << sizeOfArbitraryMessage << " and restBytes " << restBytes);
+
+    do
+      outputGenerator.theBHumanArbitraryMessage.queue.removeLastMessage();
+    while((sizeOfArbitraryMessage = outputGenerator.theBHumanArbitraryMessage.sizeOfArbitraryMessage()) > restBytes
+          && !outputGenerator.theBHumanArbitraryMessage.queue.isEmpty());
+  }
+
+  ASSERT(sizeOfArbitraryMessage <= restBytes);
+
+  outputGenerator.theBHumanArbitraryMessage.write(reinterpret_cast<void*>(m->data + offset));
+
+  outputGenerator.theBSPLStandardMessage.numOfDataBytes = static_cast<uint16_t>(offset + sizeOfArbitraryMessage);
+
+  #else
+
   outputGenerator.theBSPLStandardMessage.numOfDataBytes = static_cast<uint16_t>(offset);
 
+  #endif
+
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  outputGenerator.theBSPLStandardMessage.write(reinterpret_cast<void*>(&m->header[0]));
+  #else
   outputGenerator.theBSPLStandardMessage.write(reinterpret_cast<void*>(&m->playerNum));
+  #endif
 
   outputGenerator.sentMessages++;
   SendPacketFile << outputGenerator.sentMessages << " " << theFrameInfo.time << std::endl;
 
   SendPacketFile.close();
+
+  // TEMP, TODO remove
+  #if INCLUDE_BHUMAN_ARBITRARY_MESSAGE
+  OUTPUT_TEXT("SIZE REPORT");
+  OUTPUT_TEXT("theBHumanStandardMessage: " << outputGenerator.theBHumanStandardMessage.sizeOfBHumanMessage());
+  OUTPUT_TEXT("theBHumanArbitraryMessage: " << outputGenerator.theBHumanArbitraryMessage.sizeOfArbitraryMessage());
+  OUTPUT_TEXT("theBSPLStandardMessage: " << outputGenerator.theBSPLStandardMessage.numOfDataBytes);
+  //#else
+  //OUTPUT_TEXT("MESSAGE BYTES: " << outputGenerator.theBSPLStandardMessage.numOfDataBytes);
+  #endif
 
   outputGenerator.timeLastSent = theFrameInfo.time;    // SPQR simplified this, reasons for BHuman to do the other way are unclear.
                                       // At least this works with the striker sending at a different rate.
@@ -248,8 +360,13 @@ void TeamMessageHandler::maintainBMateList(TeamData& teamData) const
 #define PARSING_ERROR(outputText) { OUTPUT_ERROR(outputText); receivedMessageContainer.lastErrorCode = ReceivedBHumanMessage::parsingError;  return false; }
 bool TeamMessageHandler::readSPLStandardMessage(const SPLStandardMessageBufferEntry* const m)
 {
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+  if(!receivedMessageContainer.theBSPLStandardMessage.read(&m->message.header[0]))
+    PARSING_ERROR("BSPL" " message part reading failed");
+  #else
   if(!receivedMessageContainer.theBSPLStandardMessage.read(&m->message.playerNum))
     PARSING_ERROR("BSPL" " message part reading failed");
+  #endif
 
 #ifndef SELF_TEST
   if(receivedMessageContainer.theBSPLStandardMessage.playerNum == theRobotInfo.number)
@@ -260,8 +377,26 @@ bool TeamMessageHandler::readSPLStandardMessage(const SPLStandardMessageBufferEn
      receivedMessageContainer.theBSPLStandardMessage.playerNum > Settings::highestValidPlayerNumber)
     PARSING_ERROR("Invalid robot number received " << receivedMessageContainer.theBSPLStandardMessage.playerNum);
 
+  #if SPL_MESSAGE_INCLUDE_STANDARD_HEADER
+
+  if(receivedMessageContainer.theBSPLStandardMessage.teamNum != static_cast<uint8_t>(Global::getSettings().teamNumber))
+    PARSING_ERROR("Invalid team number received");
+
+  #endif
+
   if(!receivedMessageContainer.theBHumanStandardMessage.read(m->message.data))
     PARSING_ERROR(BHUMAN_STANDARD_MESSAGE_STRUCT_HEADER " message part reading failed");
+
+  #if BHUMAN_MESSAGE_INCLUDE_HEADER
+  if(receivedMessageContainer.theBHumanStandardMessage.magicNumber != Global::getSettings().magicNumber)
+    return (receivedMessageContainer.lastErrorCode = ReceivedBHumanMessage::magicNumberDidNotMatch) && false;
+  #endif
+
+  #if INCLUDE_BHUMAN_ARBITRARY_MESSAGE
+  const size_t offset = receivedMessageContainer.theBHumanStandardMessage.sizeOfBHumanMessage();
+  if(!receivedMessageContainer.theBHumanArbitraryMessage.read(m->message.data + offset))
+    PARSING_ERROR(BHUMAN_ARBITRARY_MESSAGE_STRUCT_HEADER " message part reading failed");
+  #endif
 
   receivedMessageContainer.timestamp = m->timestamp;
 
@@ -301,6 +436,12 @@ void TeamMessageHandler::parseMessageIntoBMate(Teammate& currentTeammate)
   currentTeammate.isPenalized = robotStatus.isPenalized;
   currentTeammate.isUpright = robotStatus.isUpright;
   currentTeammate.hasGroundContact = robotStatus.hasGroundContact;
+  #if KEEP_FULL_ROBOT_STATUS
+  currentTeammate.timeWhenLastUpright = robotStatus.timeWhenLastUpright;
+  currentTeammate.timeOfLastGroundContact = robotStatus.timeOfLastGroundContact;
+  currentTeammate.sequenceNumber = robotStatus.sequenceNumbers[currentTeammate.number - Settings::lowestValidPlayerNumber];
+  currentTeammate.returnSequenceNumber = robotStatus.sequenceNumbers[theRobotInfo.number - Settings::lowestValidPlayerNumber];
+  #endif
 
   RECEIVE_PARTICLE(RobotPose);
 
@@ -310,9 +451,15 @@ void TeamMessageHandler::parseMessageIntoBMate(Teammate& currentTeammate)
   currentTeammate << pr;
 
   FOREACH_TEAM_MESSAGE_REPRESENTATION(RECEIVE_PARTICLE);
+  // RECEIVE_PARTICLE(FieldCoverage);
+  // RECEIVE_PARTICLE(RobotHealth);
 
   // Restore original representations from net-specific ones
   currentTeammate.theObstacleModel << currentTeammate.theDiscretizedObstacleModel;
 
   receivedMessageContainer.theBHumanStandardMessage.in = nullptr;
+
+  #if INCLUDE_BHUMAN_ARBITRARY_MESSAGE
+  receivedMessageContainer.theBHumanArbitraryMessage.queue.handleAllMessages(currentTeammate);
+  #endif
 }

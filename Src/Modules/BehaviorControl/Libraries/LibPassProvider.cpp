@@ -21,6 +21,9 @@ void LibPassProvider::update(LibPass& libPass)
   libPass.poseToPass = [this, &libPass]() -> Pose2f {
     return poseToPass(libPass);
   };
+  libPass.strikerPassShare = [this]() -> std::tuple<int,int,Pose2f> {
+    return strikerPassShare();
+  };
   libPass.getPassUtility = [this](Vector2f position, int timeSLR) -> float {
     return getPassUtility(position, timeSLR);
   };
@@ -32,6 +35,9 @@ void LibPassProvider::update(LibPass& libPass)
   };
   libPass.getBestPassageSpecial = [this]() -> std::tuple<Vector2f, float> {
     return getBestPassageSpecial();
+  };
+  libPass.getKickType = [this](Vector2f target) -> KickInfo::KickType {
+    return getKickType(target);
   };
 
   // isTargetToPass provided by calls to poseToPass
@@ -224,11 +230,21 @@ Pose2f LibPassProvider::poseToPass(LibPass& libPass) {
   return Vector2f(theFieldDimensions.xPosOpponentGroundLine,0.f);
 };
 
+std::tuple<int,int,Pose2f> LibPassProvider::strikerPassShare() const {
+  for(const auto& teammate : theTeamData.teammates) {
+    // [2022] cleared lots of commented stuff. Check spqrnao2022 if you REALLY need it.
+    if(teammate.role == PlayerRole::RoleType::striker) {
+      return std::tuple<int,int,Pose2f>(teammate.thePassShare.readyPass,teammate.thePassShare.passingTo,teammate.thePassShare.passTarget);
+    }
+  }
+  return std::tuple<int,int,Pose2f>(0,0,theRobotPose);
+};
 
 float LibPassProvider::getInversePassUtility(Vector2f position) const {
 
   Vector2f globalBall = theFieldBall.recentBallPositionOnField();
   Vector2f opponentGoal(theFieldDimensions.xPosOpponentGoal, 0.f);
+  float minDistanceGain = 1000.f;
 
   if((position-opponentGoal).norm() + minDistanceGain > (globalBall-opponentGoal).norm())
     return 0.f;
@@ -236,6 +252,10 @@ float LibPassProvider::getInversePassUtility(Vector2f position) const {
   Vector2f ballPosition = theFieldBall.recentBallPositionOnField();
 
   float norm = (position-ballPosition).norm();
+
+  float bestPassageDistance = 3000.f; //TODO: move to cfg
+  float passageVariance = 3000.f; //TODO: move to cfg
+  float closestInterceptorThreshold = 1000.f; //TODO: move to cfg
   
   float utilityDistance = gaussianProbability(norm, passageVariance, bestPassageDistance); // TODO: stimare dai dati
   float normalizationFactor = gaussianProbability(bestPassageDistance, passageVariance, bestPassageDistance);
@@ -259,9 +279,14 @@ float LibPassProvider::getInversePassUtility(Vector2f position) const {
 
 float LibPassProvider::getPassUtility(Vector2f position, int timeSLR) const{
 
+  float bestPassageDistance = 3000.f;
+  float passageVariance = 3000.f;
+  float closestInterceptorThreshold = 1000.f;
+  float minDistanceGain = 1000.f;
+
   Vector2f globalBall = theFieldBall.recentBallPositionOnField();
 
-  LocalVector2f localPosition = LocalVector2f(theLibMisc.glob2Rel(position.x(), position.y()).translation);
+  Vector2f localPosition = theLibMisc.glob2Rel(position.x(), position.y()).translation;
 
   Vector2f opponentGoal(theFieldDimensions.xPosOpponentGoal, 0.f);
 
@@ -281,10 +306,12 @@ float LibPassProvider::getPassUtility(Vector2f position, int timeSLR) const{
   float closestInterceptor = INFINITY;
   
   for(const Obstacle& opp : theTeamPlayersModel.obstacles)
-    if (opp.type == Obstacle::opponent)
+    if (opp.type == Obstacle::opponent) // TODO: considera se i teammates stanno in mezzo.
       closestInterceptor = std::min(closestInterceptor, Geometry::getDistanceToEdge(line, opp.center));
   
   float utilityClosestInterceptor = std::min(closestInterceptor, closestInterceptorThreshold) / closestInterceptorThreshold; 
+
+  // TODO: sarebbe bene usare le percezioni locali ... (come? boh)
 
   // taking into account how old the information is 
   float utilityUpdated = 1.f - mapToRange(static_cast<float>(timeSLR), 0.f, static_cast<float>(theMessageManagement.sendInterval), 0.f, 1.f);
@@ -347,16 +374,9 @@ std::tuple<Vector2f, float> LibPassProvider::getBestPassageSpecial() const{
   for(const Teammate& mate : theTeamData.teammates){
     int time_SLR = theFrameInfo.getTimeSince(mate.timeWhenLastPacketReceived);
     // Utility for a passage on the exact position of the teammate
-
-    Vector2f opponent_goal = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosCenterGoal); 
-    Vector2f distance_vector = opponent_goal - mate.theRobotPose.translation;
-    Vector2f our_corner = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosLeftSideline);
-    float distance = distance_vector.norm();
-    float max_distance = (opponent_goal - our_corner).norm();
-    float distanceProbability = mapToRange(distance, 0.f, max_distance, 0.f, 1.f);
-
-    float utility_mate = LibPassProvider::getPassUtility(mate.theRobotPose.translation, time_SLR) * (1.f - distanceProbability);
+    float utility_mate = LibPassProvider::getPassUtility(mate.theRobotPose.translation, time_SLR);
     // Utility for a killer pass (passaggio filtrante)
+    Vector2f opponent_goal = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosCenterGoal); 
     Vector2f direction = (opponent_goal - mate.theRobotPose.translation);
     direction /= direction.norm();
 
@@ -385,4 +405,97 @@ std::tuple<Vector2f, float> LibPassProvider::getBestPassageSpecial() const{
   }
 
   return std::tuple<Vector2f, float>(best_position, best_utility);
+};
+
+KickInfo::KickType LibPassProvider::getKickType(Vector2f target) const {
+  
+  /**  KICKTYPES:
+   * * Walk Kick Types:
+   * 
+   * * KickType                                     | rotation [deg] | range [mm] | execution time [ms] | real range [mm] (2024)
+   *   --------------------------------------------------------------------------------------------------------------------------
+   *   walkForwardsRight/Left                       | 0              | 400-1000   | 600                 |
+   *   walkForwardsRightLong/LeftLong               | 0              | 2500-3500  | 350                 |
+   *   walkSidewardsRightFootToRight/LeftFootToLeft | 90/-90         | 2000       | 400                 |
+   *   walkTurnRightFootToLeft/LeftFootToRight      | -45/45 deg     | 400-2100   | 600                 |
+   *   walkForwardStealBallRight/Left               | -90/90 deg     | 200        | 0                   |
+   *   walkForwardsRightAlternative/LeftAlternative | 3/-3 deg       | 2100       | 600                 |
+   *  
+   *   // walkForward
+   *    // value || trials
+   *    // ------||---------
+   *    // 400   || 45
+   *    // 500   || 54
+   *    // 600   || 63
+   *    // 700   || 86 | 76 70
+   *    // 800   || 87 100 79 98
+   *    // 900   || 80 97 86 94 | 145 90
+   *    // 1000  || 95 115 106 123
+   *
+   *   // walkForwardLong
+   *    // value || trials
+   *    // ------||---------
+   *    // 2500  || 270 165 170 200
+   *    // 2600  || 240 200 180 260
+   *    // 2700  || 280 300 250 275
+   *    // 2800  || 210 230 200 150 280
+   *    // 2900  || 270 200 120 120 120
+   *    // 3000  || 240 140 150 200 
+  */
+
+  if(thePlayerRole.role == thePlayerRole.RoleType::striker){
+    Vector2f inFrontOfRobot = theLibMisc.rel2Glob(1000, 0).translation;
+    // CYLINDERARROW3D("module:LibPassProvider:passageModelBased", Vector3f(theRobotPose.translation.x(), theRobotPose.translation.y(), 10), Vector3f(inFrontOfRobot.x(), inFrontOfRobot.y(), 10), 5.f, 65.f, 35.f, ColorRGBA::black);
+    // CYLINDERARROW3D("module:LibPassProvider:passageModelBased", Vector3f(theRobotPose.translation.x(), theRobotPose.translation.y(), 10), Vector3f(target.x(), target.y(), 10), 5.f, 65.f, 35.f, ColorRGBA::black);
+  }
+
+  float distance         = (theRobotPose.inversePose * target).norm();
+  float angle            = std::abs(theLibMisc.radiansToDegree((theRobotPose.inversePose * target).angle()));  
+  Vector2f ball_relative = theFieldBall.recentBallPositionRelative();
+
+  // compute left or right foot
+  bool left = false;
+  if(ball_relative.y() > 0) left = true;
+
+  // LONG_DISTANCES: 2000-3500
+  // ! walkForwardsLeftLong/RightLong have a range of 2500-3500, so this condition is a bit forced
+  if (distance>=2000 && distance<3500) {
+    if (left) return KickInfo::KickType::walkForwardsLeftLong;
+    else return KickInfo::KickType::walkForwardsRightLong;
+  }
+
+  // SHORT_DISTANCES: 400-2000
+  // TODO: this should be splitted into 400-1000 (short) and 1000-2000 (mid), but for now we don't have a walkkick with range 1000-2000
+  else{
+
+    // Forward: 400-1000
+    if (angle<=50){
+      if (left) return KickInfo::KickType::walkForwardsLeft;
+      else return KickInfo::KickType::walkForwardsRight;
+    }
+
+    // Forward-Turn: 400-2100
+    else if (angle>50 && angle<=80 && ball_relative.norm() < 500){
+      if (left) return KickInfo::KickType::walkTurnRightFootToLeft;
+      else return KickInfo::KickType::walkTurnLeftFootToRight;
+    }
+
+    // Sideward: 2000
+    else if (angle>80 && angle<=135 && ball_relative.norm() < 500){
+      if (left) return KickInfo::KickType::walkSidewardsLeftFootToLeft;
+      else return KickInfo::KickType::walkSidewardsRightFootToRight;
+    }
+
+    // Backward
+    else {
+      // TODO: Colpo di tacco !! :D
+      if (left) return KickInfo::KickType::walkForwardsLeft;
+      else return KickInfo::KickType::walkForwardsRight;
+    }
+
+  }
+
+  // default
+  if (left) return KickInfo::KickType::walkForwardsLeft;
+  else return KickInfo::KickType::walkForwardsLeft;
 };

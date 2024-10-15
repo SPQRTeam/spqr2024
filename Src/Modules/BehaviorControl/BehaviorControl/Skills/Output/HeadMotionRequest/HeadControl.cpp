@@ -17,7 +17,6 @@
 #include "Representations/Modeling/TeamBallModel.h"
 #include "Representations/MotionControl/HeadMotionInfo.h"
 #include "Representations/MotionControl/HeadMotionRequest.h"
-#include "Modules/BehaviorControl/BehaviorControl/Skills/Output/HeadMotionRequest/HeadControlUtils.h"
 #include <cmath>
 
 SKILL_IMPLEMENTATION(HeadControl,
@@ -29,7 +28,6 @@ SKILL_IMPLEMENTATION(HeadControl,
   IMPLEMENTS(LookAtPoint),
   IMPLEMENTS(LookForward),
   IMPLEMENTS(LookLeftAndRight),
-  IMPLEMENTS(LookForScan),
   REQUIRES(BallModel),
   REQUIRES(BallSpecification),
   REQUIRES(FieldBall),
@@ -101,13 +99,6 @@ class HeadControl : public HeadControlBase
     setPanTiltRequest(HeadMotionRequest::autoCamera, 0.f, 0.38f, 150_deg);
   }
 
-  void execute(const LookForScan& p) override
-  {
-    std::array<Angle, 2> currentPanTilt = scanStatus.getPanTilt();
-    setPanTiltRequest(HeadMotionRequest::autoCamera, currentPanTilt[0], currentPanTilt[1], p.speed);
-    scanStatus.transition(theJointAngles.angles[Joints::headYaw], theJointAngles.angles[Joints::headPitch]);
-  }
-
   void execute(const LookLeftAndRight& p) override
   {
     if(!theHeadMotionInfo.moving && std::abs(Angle::normalize(theJointAngles.angles[Joints::headYaw] - lookLeftAndRightSign * p.maxPan)) < 5_deg)
@@ -124,10 +115,6 @@ class HeadControl : public HeadControlBase
   void reset(const LookLeftAndRight& p) override
   {
     lookLeftAndRightSign = p.startLeft ? 1.f : -1.f;
-  }
-  void reset(const LookForScan& p) override
-  {
-    scanStatus.reset();
   }
 
   void setPanTiltRequest(HeadMotionRequest::CameraControlMode camera, Angle pan, Angle tilt, Angle speed, bool stopAndGoMode = false, bool calibrationMode = false)
@@ -152,7 +139,6 @@ class HeadControl : public HeadControlBase
   }
 
   float lookLeftAndRightSign; /**< The side to which LookLeftAndRight currently turns the head. */
-  ScanStateHandler scanStatus;
 };
 
 MAKE_SKILL_IMPLEMENTATION(HeadControl);

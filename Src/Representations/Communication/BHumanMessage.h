@@ -8,6 +8,7 @@
 
 #include "Tools/Communication/BHumanTeamMessageParts/BSPLStandardMessage.h"
 #include "Tools/Communication/BHumanTeamMessageParts/BHumanStandardMessage.h"
+#include "Tools/Communication/BHumanTeamMessageParts/BHumanArbitraryMessage.h"
 #include "Tools/Function.h"
 #include "Tools/Streams/AutoStreamable.h"
 
@@ -21,6 +22,7 @@ STREAMABLE(BHumanMessage,
   (unsigned) timestamp,
   (BSPLStandardMessage) theBSPLStandardMessage,
   (BHumanStandardMessage) theBHumanStandardMessage,
+  (BHumanArbitraryMessage) theBHumanArbitraryMessage,
 });
 
 inline unsigned BHumanMessage::toLocalTimestamp(unsigned) const { return 0u; }

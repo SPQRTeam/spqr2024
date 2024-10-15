@@ -15,6 +15,4 @@ STREAMABLE(KickoffState,
 {,
   (bool)(true) allowedToScore, /**< Whether it is allowed to score goals. */
   (bool)(true) allowedToEnterCenterCircle, /**< Whether it is allowed to enter the center circle. */
-  (bool)(false) ballWasOutOfCenterCircle,
-  (bool)(false) isKickoff,
 });

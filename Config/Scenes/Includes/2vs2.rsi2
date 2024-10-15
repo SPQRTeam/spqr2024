@@ -1,0 +1,28 @@
+<Simulation>
+
+  <Compound name="robots">
+
+    <Body ref="Nao" name="robot1">
+      <Translation x="1.5" y="-1" z="320mm"/>
+      <Rotation z="180degree"/>
+      <Set name="NaoColor" value="red"/>
+    </Body>
+    <Body ref="Nao" name="robot2">
+      <Translation x="1" y="0" z="320mm"/>
+      <Rotation z="180degree"/>
+      <Set name="NaoColor" value="red"/>
+    </Body>
+
+    <Body ref="Nao" name="robot9">
+      <Translation x="-2" y="3" z="320mm"/>
+      <Rotation z="-90degree"/>
+      <Set name="NaoColor" value="dblue"/>
+    </Body>
+    <Body ref="Nao" name="robot10">
+      <Translation x="-1" y="3" z="320mm"/>
+      <Rotation z="-90degree"/>
+      <Set name="NaoColor" value="dblue"/>
+    </Body>
+  </Compound>
+
+</Simulation>

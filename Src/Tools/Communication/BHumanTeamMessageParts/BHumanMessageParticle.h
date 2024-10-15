@@ -38,6 +38,25 @@ Out& operator<<(Out& out, const BHumanMessageParticle<ID>& particle)
   return out << dynamic_cast<const Streamable&>(particle);
 }
 
+template<MessageID ID>
+struct PureBHumanArbitraryMessageParticle : public BHumanMessageParticle<ID>
+{
+  void operator>>(BHumanMessage& m) const override
+  {
+    m.theBHumanArbitraryMessage.queue.out.bin << *this;
+    m.theBHumanArbitraryMessage.queue.out.finishMessage(this->id());
+  }
+
+  void operator<<(const BHumanMessage&) override {}
+
+  bool handleArbitraryMessage(InMessage& m, const std::function<unsigned(unsigned u)>&) override
+  {
+    ASSERT(m.getMessageID() == this->id());
+    m.bin >> *this;
+    return true;
+  }
+};
+
 template<typename Message>
 struct BHumanCompressedMessageParticle : public BHumanMessageParticle<undefined>
 {

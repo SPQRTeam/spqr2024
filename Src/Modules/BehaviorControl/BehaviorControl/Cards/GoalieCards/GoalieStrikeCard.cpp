@@ -120,7 +120,7 @@ class GoalieStrikeCard : public GoalieStrikeCardBase
         KickInfo::KickType typeKick = theLibStriker.getKick(doItAsap,kickRight);
 
         Vector2f target = theLibStriker.goalTarget(doItAsap, true);
-        Angle angle = theLibMisc.angleToTarget(target);
+        Angle angle = theLibMisc.calcAngleToTarget(target);
 
         theGoToBallAndKickSkill(angle, typeKick, !doItAsap);
       }

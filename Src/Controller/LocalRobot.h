@@ -38,7 +38,7 @@ private:
   FsrSensorData fsrSensorData; /**< The simulated inertia sensor data sent to the robot code. */
   InertialSensorData inertialSensorData; /**< The simulated inertia sensor data sent to the robot code. */
   MotionInfo motionInfo; /**< The simulated motion info sent to the robot code (2D only). */
-  GlobalPose2f robotPose; /**< The robot's pose, used for some internal computations. */
+  Pose2f robotPose; /**< The robot's pose, used for some internal computations. */
   GroundTruthWorldState worldState; /**< The current world state of the simulation scene, sent to the robot code. */
   GroundTruthOdometryData odometryData; /**< The simulated odometry data sent to the robot code. */
   unsigned nextImageTimestamp = 0; /**< The theoretical timestamp of the next image to be calculated. */

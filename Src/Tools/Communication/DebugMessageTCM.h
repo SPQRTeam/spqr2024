@@ -11,8 +11,9 @@
 #include <stdint.h>
 #include <vector>
 
-#define DEBUG_MESSAGE_HEADER "SPQR"
+#define DEBUG_MESSAGE_HEADER "RGrt"
 #define DEBUG_MESSAGE_STRUCT_VERSION     4  // GAMECONTROLLER_RETURN_STRUCT_VERSION
+#define DEBUG_PORT 3940 // GAMECONTROLLER_RETURN_PORT (3939) + 1
 #define MAX_OBSTACLES 20 // max number of obstacles
 
 struct DebugMessageTCM {
@@ -35,9 +36,10 @@ struct DebugMessageTCM {
     uint8_t currentObsSize;
 
     uint8_t obsTypes[MAX_OBSTACLES]; // contains the type of the obstacles
-
-    float obsCenters[2*MAX_OBSTACLES];  // contains both x and y position of the centers of each obstacle  x|y
     
+    float obsCenterX[MAX_OBSTACLES];  // contains x position of the center of each obstacle
+    float obsCenterY[MAX_OBSTACLES];  // contains y position of the center of each obstacle
+
     unsigned int obsLastSeen[MAX_OBSTACLES]; // contains the timestamp of the last measurement
 
     uint16_t messageBudget; // useful for challenge 24
@@ -105,6 +107,8 @@ struct DebugMessageTCM {
 
             for(unsigned int i = 0; i < MAX_OBSTACLES; ++i) {
                 obsTypes[i] = 0;
+                obsCenterX[i] = 0.f;
+                obsCenterY[i] = 0.f;
                 obsLastSeen[i] = 0;
             }
         }

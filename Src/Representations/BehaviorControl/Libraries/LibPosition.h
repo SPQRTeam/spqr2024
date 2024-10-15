@@ -108,6 +108,7 @@ STREAMABLE(LibPosition,
   
   /** Provides the ready position for each robot **/
   FUNCTION(Pose2f()) myReadyPosition;
-
-  , // always put the comma at the end
+  
+  /** Checks if position is inside the rectangle defined by corner1 and corner2. **/
+  FUNCTION(bool(const Vector2f& position, const Vector2f& corner1, const Vector2f& corner2)) isPositionInsideRectangle,
 });

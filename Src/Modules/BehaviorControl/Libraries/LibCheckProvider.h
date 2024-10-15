@@ -20,7 +20,6 @@
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Module/Module.h"
-#include "Tools/Math/Geometry.h"
 
 MODULE(LibCheckProvider,
 {,

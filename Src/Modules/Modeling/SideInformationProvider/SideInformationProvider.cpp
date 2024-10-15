@@ -275,7 +275,8 @@ void SideInformationProvider::computeBasicOwnSideInformation(SideInformation& si
     if(theExtendedGameInfo.gameStateLastFrame == STATE_STANDBY && theGameInfo.state == STATE_READY)
     {
       distanceWalkedAtKnownPosition = theOdometer.distanceWalked;
-      largestXPossibleAtKnownPosition = theSetupPoses.getPoseOfRobot(theOwnTeamInfo.getSubstitutedPlayerNumber(theRobotInfo.number)).position.x();
+      bool weAreAttacking = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
+      largestXPossibleAtKnownPosition = theSetupPoses.getPoseOfRobot(theOwnTeamInfo.getSubstitutedPlayerNumber(theRobotInfo.number), weAreAttacking).position.x();
     }
     else if(theExtendedGameInfo.returnFromManualPenalty)
     {

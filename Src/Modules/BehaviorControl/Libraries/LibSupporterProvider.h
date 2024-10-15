@@ -1,47 +1,56 @@
 /**
  * @file LibSupporterProvider.h
  * 
- * This file defines a module that computes the supporter position.
+ * See LibSupporter
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
 
-#include "Representations/BehaviorControl/Libraries/LibSupporter.h"
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
-#include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/Modeling/RobotPose.h"
+#include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Modeling/TeamPlayersModel.h"
+#include "Representations/Communication/TeamData.h"
 #include "Representations/Communication/RobotInfo.h"
 #include "Representations/BehaviorControl/PlayerRole.h"
 #include "Representations/BehaviorControl/FieldBall.h"
+#include "Representations/BehaviorControl/Libraries/LibObstacles.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
+#include "Representations/BehaviorControl/Libraries/LibSupporter.h"
+#include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 
 MODULE(LibSupporterProvider,
 {,
+  REQUIRES(RobotPose),
+  REQUIRES(TeamBallModel),
+  REQUIRES(TeamPlayersModel),
+  REQUIRES(TeamData),
+  REQUIRES(RobotInfo),
+  USES(PlayerRole),
+  REQUIRES(FieldBall),
+  REQUIRES(LibObstacles),
   REQUIRES(LibMisc),
   REQUIRES(FieldDimensions),
-  REQUIRES(RobotInfo),
-  REQUIRES(FieldBall),
-  USES(PlayerRole),
   PROVIDES(LibSupporter),
 });
 
 class LibSupporterProvider : public LibSupporterProviderBase
 {
 private:
-
+  
   /**
-   * @brief Updates the LibSupporter representation
-   * 
-   * @param libSupporter The LibSupporter representation to update
+   * Updates LibSupporter
+   * @param libSupporter The representation provided
    */
   void update(LibSupporter& libSupporter) override;
 
-  /**
-   * @brief Computes the supporter position (global coordinates)
-   * 
-   * @return [GlobalVector2f] The supporter position
+  /** 
+   * Provides the supporter reference position
    */
-  GlobalVector2f getSupporterPosition() const;
-
+  Vector2f getSupporterPosition() const;
+  
 };

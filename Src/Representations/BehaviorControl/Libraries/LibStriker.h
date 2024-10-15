@@ -2,6 +2,8 @@
  * @file LibStriker.h
  *
  * This file defines a representation that holds some utilities (primarily) for the striker.
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
@@ -14,42 +16,25 @@
 
 STREAMABLE(LibStriker,
 {
-
-  /**
-  * @brief Returns the best kick type for the striker
-  * 
-  * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
-  * @param kickRight a bool attribute, is true when you want to kick with right foot
-  * 
-  * @return The best kick type [KickInfo::KickType]
-  */
-  FUNCTION(KickInfo::KickType(bool kickAsap, bool kickRight)) getKick;
-
-  /**
-   * @brief Get the best kick type to reach the target.
-   * 
-   * @param target The target point in global coordinates
-   * 
-   * @return [KickInfo::KickType] The best kick type to reach the target.
-   */
-  FUNCTION(KickInfo::KickType(GlobalVector2f target)) getWalkKick;
-  
-  /**
-   * @brief Returns whether the robot should kick or not
-   * 
-   * @param currentlyKicking a bool attribute, is true when the robot is currently kicking
-   * @param kickIntervalThreshold a float attribute, the threshold for the kick interval
-   * 
-   * @return If the robot should kick or not [bool]
-   */
-  FUNCTION(bool(bool currentlyKicking, float kickIntervalThreshold)) shouldKick;
-
-
   /** 
    * @author Emanuele Musumeci
    * Returns the global y coord point we are looking at on the opponent groundline
    */
   FUNCTION(float()) projectGazeOntoOpponentGroundline;
+
+  /**
+   * @author Emanuele Antonioni
+   * 
+   * Gives the best movement point for the striker selecting it between five fixed point (center, right, left, very right, very left)
+   * */
+  FUNCTION(Vector2f()) strikerMovementPoint;
+
+  /**
+   * @author Valerio Spagnoli
+   * 
+   * Return the target point for the dribbling.  
+   * */
+  FUNCTION(Vector2f()) strikerDribblePoint;
 
   /** Provides a vector with the point of beginning and finish of goal areas free from opponent coverage
    * @param myPose pose of the robot
@@ -73,9 +58,54 @@ STREAMABLE(LibStriker,
     * **/
   FUNCTION(std::pair<Vector2f, FreeGoalTargetableArea>(bool shootASAP, bool forceHeuristic)) goalTargetWithArea;
 
+  /**
+   * PD controller that returns the approaching speed.
+   * @param range The distance range taken to pass from speed 1 to the specified minimum speed
+   * @param kp The controller proportional gain
+   * @param kd The controller derivative gain
+   * @param minSpeed The minimum speed allowed 
+   * @return speed in Pose2f in a range from 1 to minSpeed 
+   * **/
+  FUNCTION(Pose2f(Rangef range, float kp, float kd, float minSpeed )) getApproachSpeed;
 
-  GlobalVector2f strikerPosition;     // Target point of the Striker in global coordinates
-  GlobalVector2f strikerDribblePoint; // Target point for the dribbling in global coordinates
+  /**
+   * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
+   * @param kickRight a bool attribute, is true when you want to kick with right foot
+   * @return The best kickType chosen according to the opponent goal ditance
+  * **/
+  FUNCTION(KickInfo::KickType(bool kickAsap, bool kickRight)) getKick;
 
-  , // always put a comma at the end 
+  /**
+   * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
+   * @param kickRight a bool attribute, is true when you want to kick with right foot
+   * @param target a Vector2f, that is the target of the kick (so that it can be used also for passes)
+   * @return The best kickType chosen according to the opponent goal ditance
+  * **/
+  FUNCTION(KickInfo::KickType(bool kickRight, Vector2f target)) getKickPass; // TODO there isn't the implementation
+
+  /**
+   * Groups some conditions common to a couple striker cards.
+   * TODO this is likely to end up unused, check after porting.
+   *      The cards in question are unlikely to be ported to the new [2023] repo.
+   */
+  FUNCTION(bool(int hysteresisSign)) strikerPassCommonConditions;
+
+  
+  /**
+   * This function return true if the robot should kick and false otherwise
+  */
+  FUNCTION(bool(bool currentlyKicking, float kickIntervalThreshold)) shouldKick;
+
+  /**
+   * Return the position for the striker:
+   * - base case: return the position of the ball 
+   */
+    FUNCTION(Vector2f(bool ballSeen)) getStrikerPosition;
+  /**
+   * Return the position for the striker:
+   * - special cases: corner and kickin 
+   */
+    FUNCTION(Vector2f(bool ballSeen)) getStrikerPositionSpecial;
+    ,
+
 });

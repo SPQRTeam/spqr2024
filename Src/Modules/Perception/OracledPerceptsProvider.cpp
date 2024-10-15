@@ -588,6 +588,7 @@ bool OracledPerceptsProvider::pointIsInImage(const Vector2f& p, Vector2f& pImg) 
 
 void OracledPerceptsProvider::updateViewPolygon()
 {
+  // code is copied from FieldCoverageProvider::drawFieldView()
   const Vector3f vectorToCenter(1, 0, 0);
 
   RotationMatrix r = theCameraMatrix.rotation;

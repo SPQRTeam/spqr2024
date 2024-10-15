@@ -22,8 +22,6 @@ STREAMABLE(LibObstacles,
    */
   FUNCTION(Pose2f()) nearestOpponent;
 
-  FUNCTION(GlobalPose2f(GlobalVector2f& point)) nearestOpponentToPoint;
-
   /** 
    * Returns the pose of the nearest opponent that satisfies a filter condition,
    * to be given as a lambda function.

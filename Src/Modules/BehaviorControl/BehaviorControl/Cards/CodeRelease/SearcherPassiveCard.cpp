@@ -13,6 +13,7 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Challenge/HumanCommand.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
 
@@ -23,7 +24,6 @@ CARD(SearcherPassiveCard,
     CALLS(Stand),
     CALLS(WalkAtRelativeSpeed),
     CALLS(WalkToPoint),
-    CALLS(LookForScan),
 
     USES(LibMisc),
     REQUIRES(PlayerRole),
@@ -31,6 +31,7 @@ CARD(SearcherPassiveCard,
     REQUIRES(FieldDimensions),
     REQUIRES(RobotPose),
     REQUIRES(TeamBallModel),
+    REQUIRES(HumanCommand),
 
     LOADS_PARAMETERS(
     {,
@@ -52,22 +53,23 @@ class SearcherPassiveCard : public SearcherPassiveCardBase
     // if both is true, y doesn't care
     bool isInPosition(Pose2f p, float y, bool both=false){
         if(both){
-            return (p.translation-Vector2f(guard_x, guard_y)).norm() < POSITION_TAKEN_TH || 
-                   (p.translation-Vector2f(guard_x, -guard_y)).norm() < POSITION_TAKEN_TH;
+            return theLibMisc.distance(p.translation, Vector2f(guard_x, guard_y)) < POSITION_TAKEN_TH || 
+                   theLibMisc.distance(p.translation, Vector2f(guard_x, -guard_y)) < POSITION_TAKEN_TH;
         }
 
-        return (p.translation-Vector2f(guard_x, y)).norm() < POSITION_TAKEN_TH;
+        return theLibMisc.distance(p.translation, Vector2f(guard_x, y)) < POSITION_TAKEN_TH;
     }
 
     public:
 
     Vector2f chosen_position;
     bool preconditions() const override{
-        return thePlayerRole.role == PlayerRole::passiveSearcher;
+        return thePlayerRole.role == PlayerRole::passiveSearcher || 
+               theHumanCommand.commandBody == HumanCommand::CommandBody::SearchTheBall;
     }
 
     bool postconditions() const override{
-        return true;
+        return theHumanCommand.commandBody != HumanCommand::CommandBody::SearchTheBall;
     }
 
     option
@@ -138,7 +140,7 @@ class SearcherPassiveCard : public SearcherPassiveCardBase
             action
             {
                 float turn_direction = chosen_position.y() > 0 ? 1 : -1;
-                theLookForScanSkill(180_deg);
+                theLookLeftAndRightSkill();
                 theWalkAtRelativeSpeedSkill(Pose2f(turn_direction));
             }
         }
@@ -154,7 +156,7 @@ class SearcherPassiveCard : public SearcherPassiveCardBase
             action
             {                
                 theStandSkill();
-                theLookForScanSkill(180_deg);
+                theLookLeftAndRightSkill();
             }
         }
     }

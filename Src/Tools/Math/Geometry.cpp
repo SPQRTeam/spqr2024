@@ -308,20 +308,30 @@ float Geometry::distance(const Vector2i& point1, const Vector2i& point2)
   return (point2 - point1).cast<float>().norm();
 }
 
-bool Geometry::isPointInsideRectangle(const Vector2f& corner1, const Vector2f& corner2, const Vector2f& point)
+bool Geometry::isPointInsideRectangle(const Vector2f& bottomLeftCorner, const Vector2f& topRightCorner, const Vector2f& point)
+{
+  return(bottomLeftCorner.x() <= point.x() && point.x() <= topRightCorner.x() &&
+         point.y() <= bottomLeftCorner.y() && topRightCorner.y() <= point.y());
+}
+
+bool Geometry::isPointInsideRectangle2(const Vector2f& corner1, const Vector2f& corner2, const Vector2f& point)
 {
   const Vector2f bottomLeft(std::min(corner1.x(), corner2.x()), std::max(corner1.y(), corner2.y()));
   const Vector2f topRight(std::max(corner1.x(), corner2.x()), std::min(corner1.y(), corner2.y()));
-  return(bottomLeft.x() <= point.x() && point.x() <= topRight.x() &&
-         point.y() <= bottomLeft.y() && topRight.y() <= point.y());
+  return isPointInsideRectangle(bottomLeft, topRight, point);
 }
 
 bool Geometry::isPointInsideRectangle(const Rect& rect, const Vector2f& point)
 {
   const Vector2f bottomLeft(std::min(rect.a.x(), rect.b.x()), std::min(rect.a.y(), rect.b.y()));
   const Vector2f topRight(std::max(rect.a.x(), rect.b.x()), std::max(rect.a.y(), rect.b.y()));
-  return(bottomLeft.x() <= point.x() && point.x() <= topRight.x() &&
-         point.y() <= bottomLeft.y() && topRight.y() <= point.y());
+  return isPointInsideRectangle(bottomLeft, topRight, point);
+}
+
+bool Geometry::isPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, const Vector2i& point)
+{
+  return(bottomLeftCorner.x() <= point.x() && point.x() <= topRightCorner.x() &&
+         point.y() <= bottomLeftCorner.y() && topRightCorner.y() <= point.y());
 }
 
 int ccw(const Vector2f& p0, const Vector2f& p1, const Vector2f& p2)

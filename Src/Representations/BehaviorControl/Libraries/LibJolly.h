@@ -1,7 +1,9 @@
 /**
  * @file LibJolly.h
  *
- * This file defines a representation that holds the jolly position.
+ * This file defines a representation that holds some utilities (primarily) for the jolly.
+ *
+ * @author Francesco Petri
  */
 
 #pragma once
@@ -12,7 +14,13 @@
 
 STREAMABLE(LibJolly,
 {
-  GlobalVector2f jollyPosition; // Target point of the Jolly in global coordinates
+  /** 
+   * Provides the jolly reference position
+   */
+  FUNCTION(Vector2f()) getJollyPosition;
+  FUNCTION(Vector2f()) getJollyPositionGraph;
+  FUNCTION(Vector2f()) getJollyPositionSpecial;
 
-  , // always put a comma at the end 
+  FUNCTION(float(Vector2f position)) inversePassageUtilityModel;
+  ,
 });

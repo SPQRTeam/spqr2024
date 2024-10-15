@@ -1,11 +1,13 @@
 /**
  * @file LibStrikerProvider.cpp
  * 
- * This file implements a module that provides some utilities (primarily) for the striker.
+ * See LibStriker
+ *
+ * @author Francesco Petri
  */
 
 #include "LibStrikerProvider.h"
-#include "Tools/Math/BHMath.h"
+#include "Tools/Math/BHMath.h"    // sqr
 #include <iostream>
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Debugging/DebugDrawings.h"
@@ -17,6 +19,12 @@ MAKE_MODULE(LibStrikerProvider, behaviorControl);
 
 void LibStrikerProvider::update(LibStriker& libStriker)
 {
+  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerPosition", "field");
+  DECLARE_DEBUG_DRAWING("module:LibStrikerProvider:strikerPosition", "drawingOnField");
+
+  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerDribblePoint", "field");
+  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerDribblePointVerbose", "field");
+
   libStriker.projectGazeOntoOpponentGroundline = [this]() -> float {
     return projectGazeOntoOpponentGroundline();
   };
@@ -29,25 +37,30 @@ void LibStrikerProvider::update(LibStriker& libStriker)
   libStriker.goalTargetWithArea = [this](bool shootASAP, bool forceHeuristic) -> std::pair<Vector2f, FreeGoalTargetableArea> {
     return goalTargetWithArea(shootASAP, forceHeuristic);
   };
+  libStriker.strikerPassCommonConditions = [this](int hysteresisSign) -> bool {
+    return strikerPassCommonConditions(hysteresisSign);
+  };
+  libStriker.strikerMovementPoint = [this]() -> Vector2f {
+    return strikerMovementPoint();
+  };
+  libStriker.strikerDribblePoint = [this]() -> Vector2f {
+    return strikerDribblePoint();
+  };
+  libStriker.getApproachSpeed = [this](Rangef range, float kp, float kd, float minSpeed) -> Pose2f {
+    return getApproachSpeed(range, kp, kd, minSpeed);
+  };
   libStriker.getKick = [this](bool kickAsap, bool kickRight) -> KickInfo::KickType {
     return getKick(kickAsap, kickRight);
   };
-  libStriker.getWalkKick = [this](GlobalVector2f target) -> KickInfo::KickType {
-    return getWalkKick(target);
+  libStriker.getStrikerPosition = [this](bool ballSeen) -> Vector2f {
+    return getStrikerPosition(ballSeen);
+  };
+  libStriker.getStrikerPositionSpecial = [this](bool ballSeen) -> Vector2f {
+    return getStrikerPositionSpecial(ballSeen);
   };
   libStriker.shouldKick = [this](bool currentlyKicking, float kickIntervalThreshold) -> bool {
     return shouldKick(currentlyKicking, kickIntervalThreshold);
   };
-
-  libStriker.strikerPosition = getStrikerPosition();
-  libStriker.strikerDribblePoint = getStrikerDribblePoint();
-
-  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerPosition", "field");
-  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerDribblePoint", "field");
-  DECLARE_DEBUG_DRAWING3D("module:LibStrikerProvider:strikerDribblePointVerbose", "field");
-  // if(thePlayerRole.role==PlayerRole::striker){
-  //   CYLINDER3D("module:LibStrikerProvider:strikerPosition", libStriker.strikerPosition.x(), libStriker.strikerPosition.y(), 0.0f, 0.0f, 0.0f, 0.0f, 50.0f, 20.0f, ColorRGBA::red);
-  // }
 }
 
 
@@ -154,8 +167,8 @@ float LibStrikerProvider::areaValueHeuristic(const float leftLimit, const float 
       {
         //Reweight based on vicinity of the opponent to area midpoint
         Vector2f midpoint(theFieldDimensions.xPosOpponentGroundLine, (leftLimit - rightLimit)/2);
-        float opponent_distance_factor = theOpponentGoalModel.utilityOpponentsXDistanceThreshold - (midpoint-obs.center).norm();
-        float remapped_opponent_weight = mapToRange(opponent_distance_factor, 0.f, theOpponentGoalModel.utilityOpponentsXDistanceThreshold, 0.f, theOpponentGoalModel.utilityOpponentsWeight);
+        float opponent_distance_factor = theOpponentGoalModel.utilityOpponentsXDistanceThreshold - theLibMisc.distance(midpoint, obs.center);
+        float remapped_opponent_weight = theLibMisc.mapToInterval(opponent_distance_factor, 0.0, theOpponentGoalModel.utilityOpponentsXDistanceThreshold, 0.0, theOpponentGoalModel.utilityOpponentsWeight);
         //std::cout<<"remapped_opponent_weight: "<<remapped_opponent_weight<<std::endl;
         final_weight = remapped_opponent_weight;
 
@@ -323,8 +336,8 @@ std::vector<FreeGoalTargetableArea> LibStrikerProvider::computeFreeAreas(float m
 
   if(opponents.size()>0)
   {
-    float leftPointY = projectPointOntoOpponentGroundline(opponents.at(0).left.x(),opponents.at(0).left.y())+GOAL_TARGET_OBSTACLE_INFLATION*1000/(theRobotPose.translation-opponents.at(0).left).norm();
-    float rightPointY = projectPointOntoOpponentGroundline(opponents.at(0).right.x(),opponents.at(0).right.y())-GOAL_TARGET_OBSTACLE_INFLATION*1000/(theRobotPose.translation-opponents.at(0).right).norm();
+    float leftPointY = projectPointOntoOpponentGroundline(opponents.at(0).left.x(),opponents.at(0).left.y())+GOAL_TARGET_OBSTACLE_INFLATION*1000/theLibMisc.distance(theRobotPose,opponents.at(0).left);
+    float rightPointY = projectPointOntoOpponentGroundline(opponents.at(0).right.x(),opponents.at(0).right.y())-GOAL_TARGET_OBSTACLE_INFLATION*1000/theLibMisc.distance(theRobotPose,opponents.at(0).right);
     if(opponents.size()==1)
     {
       //If the obstacle projection is at least partially inside the goal line add it
@@ -361,8 +374,8 @@ std::vector<FreeGoalTargetableArea> LibStrikerProvider::computeFreeAreas(float m
           /*
             Else use the next obstacle in the list
           */
-          nextLeftPointY = projectPointOntoOpponentGroundline(opponents.at(i).left.x(),opponents.at(i).left.y())+GOAL_TARGET_OBSTACLE_INFLATION*1000/(theRobotPose.translation-opponents.at(i).left).norm();
-          nextRightPointY = projectPointOntoOpponentGroundline(opponents.at(i).right.x(),opponents.at(i).right.y())-GOAL_TARGET_OBSTACLE_INFLATION*1000/(theRobotPose.translation-opponents.at(i).right).norm();
+          nextLeftPointY = projectPointOntoOpponentGroundline(opponents.at(i).left.x(),opponents.at(i).left.y())+GOAL_TARGET_OBSTACLE_INFLATION*1000/theLibMisc.distance(theRobotPose,opponents.at(i).left);
+          nextRightPointY = projectPointOntoOpponentGroundline(opponents.at(i).right.x(),opponents.at(i).right.y())-GOAL_TARGET_OBSTACLE_INFLATION*1000/theLibMisc.distance(theRobotPose,opponents.at(i).right);
         }
 
         /*
@@ -675,43 +688,109 @@ std::pair<Vector2f, FreeGoalTargetableArea> LibStrikerProvider::goalTargetWithAr
   return targetAndArea;
 }
 
-GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
+float LibStrikerProvider::sqrDistanceOfClosestOpponentToPoint(const Vector2f& p) const {
+  //initializing the minimum distance to a value greater than the diagonal of the field
+  //(therefore greater than any distance possible in the game)
+  float minSqrDist = sqr(2*theFieldDimensions.xPosOpponentFieldBorder + 2*theFieldDimensions.yPosLeftFieldBorder);
+  //simply loop over all opponents...
+  for(const Obstacle& opp : theTeamPlayersModel.obstacles) {
+    if (opp.type == Obstacle::opponent) {
+      float sqrdist = (p - opp.center).squaredNorm();
+      //...and update the minimum distance, that's it
+      if (sqrdist < minSqrDist) {
+        minSqrDist = sqrdist;
+      }
+    }
+  }
+  return minSqrDist;
+}
+
+Vector2f LibStrikerProvider::strikerMovementPoint() const{
+
+  std::vector<Vector2f> movepoints;
+  float steplen = 1000.f;
+  movepoints.push_back(Vector2f(theFieldBall.recentBallPositionOnField().x() + steplen, theFieldBall.recentBallPositionOnField().y())); //center move
+  movepoints.push_back(Vector2f(theFieldBall.recentBallPositionOnField().x() + (steplen * cos(45)), theFieldBall.recentBallPositionOnField().y() - (steplen * sin(45)))); //right move
+  movepoints.push_back(Vector2f(theFieldBall.recentBallPositionOnField().x() + (steplen * cos(45)), theFieldBall.recentBallPositionOnField().y() + (steplen * sin(45)))); //left move
+  movepoints.push_back(Vector2f(theFieldBall.recentBallPositionOnField().x() + (steplen * cos(80)), theFieldBall.recentBallPositionOnField().y() - (steplen * sin(80)))); //very right move
+  movepoints.push_back(Vector2f(theFieldBall.recentBallPositionOnField().x() + (steplen * cos(80)), theFieldBall.recentBallPositionOnField().y() + (steplen * sin(80)))); //very left move
+
+  float ballX = theFieldBall.recentBallPositionOnField().x();
+  float ballY = theFieldBall.recentBallPositionOnField().y();
+  float k1 = 1.5, k2 = 1.25;
+  
+  float scores[5];
+  for(int i = 0; i < movepoints.size(); i++){
+    scores[i] = 0;
+    //Penalize points by distance from the goal
+    scores[i] -= Vector2f(theFieldDimensions.xPosOpponentGroundLine - movepoints.at(i).x(), 0 - movepoints.at(i).y()).norm() * k1;
+    //Penalize points if they are out of the field's bounds
+    if((std::abs(movepoints.at(i).y()) > theFieldDimensions.yPosLeftSideline) || 
+    (std::abs(movepoints.at(i).x()) > theFieldDimensions.xPosOpponentGroundLine) ){
+      scores[i] -= 100000.f;
+    }
+    for(auto ob : theTeamPlayersModel.obstacles){
+      //Check obstacles only if they are ahead and in a radius of 1300 mm from the robot
+      if(ob.center.x() > ballX){
+        if(Vector2f(ob.center.x() - ballX, ob.center.y() - ballY).norm() < 1300.f){
+          //reward points the more they are far from the obstacles
+            scores[i] +=  Vector2f(ob.center.x() - movepoints.at(i).x(), ob.center.y() - movepoints.at(i).y()).norm() * k2;
+        }
+      }
+    }
+    
+  }//end of point assignement for
+
+  float maxScore = -10000000.f;
+  int index = 0;
+  for(int i = 0; i < 5; i++){
+    if(maxScore < scores[i]){
+      maxScore = scores[i];
+      index = i;
+    }
+  }
+    
+  return movepoints.at(index);  
+}
+
+
+Vector2f LibStrikerProvider::strikerDribblePoint(){
 
   // Represents the effective range of a dribbling action, influencing distance calculations and decision-making during dribbling maneuvers.
   float steplen = 1000.f;
 
   //* Center of dribbling: the ball position
-  GlobalVector2f center = theFieldBall.recentBallPositionOnField();
+  Vector2f center = theFieldBall.recentBallPositionOnField();
   Geometry::Circle circle = Geometry::Circle(center, steplen);
-  GlobalVector2f opponent_goal = GlobalVector2f(theFieldDimensions.xPosOpponentGoalArea, 0.f);
+  Vector2f opponent_goal = Vector2f(theFieldDimensions.xPosOpponentGoalArea, 0.f);
 
   //* Compute the goal intersection with the circle (centered in "center" and with radius "steplen")
   // There are always two intersections with the circle (so it is not necessary to check the number of intersections returned)
   Geometry::Line to_goal = Geometry::Line(center, opponent_goal-center);
   
-  GlobalVector2f goal_intersection_1;
-  GlobalVector2f goal_intersection_2;
+  Vector2f goal_intersection_1;
+  Vector2f goal_intersection_2;
   int num_of_interesections = Geometry::getIntersectionOfLineAndCircle(to_goal, circle, goal_intersection_1, goal_intersection_2);
 
   //* Choose the intersection closest to the opponent goal
-  GlobalVector2f goal_intersection = (goal_intersection_1-opponent_goal).norm() < (goal_intersection_2-opponent_goal).norm() ? goal_intersection_1 : goal_intersection_2;
+  Vector2f goal_intersection = (goal_intersection_1-opponent_goal).norm() < (goal_intersection_2-opponent_goal).norm() ? goal_intersection_1 : goal_intersection_2;
   
   //* Goal weight: inverse of the distance from the goal: the closer the goal, the higher the weight
   float goal_weight = 1/(center - opponent_goal).norm(); 
   
   //* The target is set to the goal intersection
-  GlobalVector2f target = goal_intersection;
+  Vector2f target = goal_intersection;
 
 
   //* Compute the limit intersections: the points where the circle intersects the line perpendicular to the line from the center to the goal
   //* The dribbling area is limited on the semi-circle towards the goal (i.e. it is not possible to dribble towards the own goal)
   // There are always two intersections with the circle (so it is not necessary to check the number of intersections returned)
   Geometry::Line limit_line = Geometry::Line(center, Vector2f(-to_goal.direction.y(), to_goal.direction.x()));
-  GlobalVector2f limit_intersection_1;
-  GlobalVector2f limit_intersection_2;
+  Vector2f limit_intersection_1;
+  Vector2f limit_intersection_2;
   num_of_interesections = Geometry::getIntersectionOfLineAndCircle(limit_line, circle, limit_intersection_1, limit_intersection_2);
-  GlobalVector2f left_limit = limit_intersection_1.y() > limit_intersection_2.y() ? limit_intersection_1 : limit_intersection_2;
-  GlobalVector2f right_limit = limit_intersection_1.y() < limit_intersection_2.y() ? limit_intersection_1 : limit_intersection_2;
+  Vector2f left_limit = limit_intersection_1.y() > limit_intersection_2.y() ? limit_intersection_1 : limit_intersection_2;
+  Vector2f right_limit = limit_intersection_1.y() < limit_intersection_2.y() ? limit_intersection_1 : limit_intersection_2;
 
 
   //* Compute the intersection with the field borders 
@@ -720,10 +799,10 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* 1) field_border_limits_bool: contains the boolean values of the limits (if the limit is considered or not)
   //* 2) field_border_limits: contains the limits of the field borders, or (0,0) if the limit is not considered
   //* 3) field_border_intersections: contains the intersections of the field borders with the circle, or (0,0) if the limit is not considered
-  GlobalVector2f right_opponent_corner = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosRightSideline);
-  GlobalVector2f left_opponent_corner = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosLeftSideline);
-  GlobalVector2f right_own_corner = Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosRightSideline);
-  GlobalVector2f left_own_corner = Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosLeftSideline);
+  Vector2f right_opponent_corner = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosRightSideline);
+  Vector2f left_opponent_corner = Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosLeftSideline);
+  Vector2f right_own_corner = Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosRightSideline);
+  Vector2f left_own_corner = Vector2f(theFieldDimensions.xPosOwnGroundLine, theFieldDimensions.yPosLeftSideline);
 
   Geometry::Line right_field_border = Geometry::Line(right_opponent_corner, right_own_corner-right_opponent_corner);
   Geometry::Line left_field_border = Geometry::Line(left_opponent_corner, left_own_corner-left_opponent_corner);
@@ -734,20 +813,20 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   Geometry::Line center_horizontal_line = Geometry::Line(center, Vector2f(0,1));
   Geometry::Line center_vertical_line = Geometry::Line(center, Vector2f(1,0));
 
-  GlobalVector2f right_field_border_limit;
+  Vector2f right_field_border_limit;
   bool right_border_limit = Geometry::getIntersectionOfLines(center_horizontal_line, right_field_border, right_field_border_limit);
 
-  GlobalVector2f left_field_border_limit;
+  Vector2f left_field_border_limit;
   bool left_border_limit = Geometry::getIntersectionOfLines(center_horizontal_line, left_field_border, left_field_border_limit);
 
-  GlobalVector2f opponent_goal_line_limit;
+  Vector2f opponent_goal_line_limit;
   bool up_line_limit = Geometry::getIntersectionOfLines(center_vertical_line, opponent_goal_line, opponent_goal_line_limit);
 
-  GlobalVector2f own_goal_line_limit;
+  Vector2f own_goal_line_limit;
   bool down_line_limit = Geometry::getIntersectionOfLines(center_vertical_line, own_goal_line, own_goal_line_limit);
   
-  std::vector<GlobalVector2f> field_border_limits = { GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f) }; // Only for debug drawing
-  std::vector<GlobalVector2f> field_border_intersections = { GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f), GlobalVector2f(0.f,0.f) };
+  std::vector<Vector2f> field_border_limits = { Vector2f(0.f,0.f), Vector2f(0.f,0.f), Vector2f(0.f,0.f), Vector2f(0.f,0.f) }; // Only for debug drawing
+  std::vector<Vector2f> field_border_intersections = { Vector2f(0.f,0.f), Vector2f(0.f,0.f), Vector2f(0.f,0.f), Vector2f(0.f,0.f) };
   std::vector<bool> field_border_intersections_bool = { false, false, false, false }; 
 
   //* Starts to consider the field borders if the distance from the border is less than the steplen
@@ -782,13 +861,13 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   
   //* COMPUTE the opponents intersections
   std::vector<Geometry::Circle> opponent_circles; // Only for debug drawing
-  std::vector<std::tuple<GlobalVector2f, GlobalVector2f>> opponents_interesections;
-  std::vector<std::tuple<GlobalVector2f, GlobalVector2f, GlobalVector2f>> opponents_sectors; 
+  std::vector<std::tuple<Vector2f, Vector2f>> opponents_interesections;
+  std::vector<std::tuple<Vector2f, Vector2f, Vector2f>> opponents_sectors; 
   for(auto obstacle:theObstacleModel.obstacles){
     if((obstacle.type == Obstacle::opponent || obstacle.type == Obstacle::fallenOpponent) && 
        (center - theLibMisc.rel2Glob(obstacle.center.x(), obstacle.center.y()).translation).norm() < 2*steplen){
       
-      GlobalVector2f opponent = theLibMisc.rel2Glob(obstacle.center.x(), obstacle.center.y()).translation; 
+      Vector2f opponent = theLibMisc.rel2Glob(obstacle.center.x(), obstacle.center.y()).translation; 
 
       float opponent_circle_radius;
       if((center-opponent).norm()>0.5*steplen) opponent_circle_radius = steplen + steplen*((center-opponent).norm()-0.5*steplen)/(1.5*steplen);
@@ -806,16 +885,16 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
       float right_angle = theLibMisc.radiansToDegree(angle_of_opponent-sector_angle);
       float left_angle = theLibMisc.radiansToDegree(angle_of_opponent+sector_angle);
 
-      GlobalVector2f left_bound = GlobalVector2f(center.x() + distance_of_opponent*cos(angle_of_opponent+sector_angle), center.y() + distance_of_opponent*sin(angle_of_opponent+sector_angle));
-      GlobalVector2f right_bound = GlobalVector2f(center.x() + distance_of_opponent*cos(angle_of_opponent-sector_angle), center.y() + distance_of_opponent*sin(angle_of_opponent-sector_angle));
+      Vector2f left_bound = Vector2f(center.x() + distance_of_opponent*cos(angle_of_opponent+sector_angle), center.y() + distance_of_opponent*sin(angle_of_opponent+sector_angle));
+      Vector2f right_bound = Vector2f(center.x() + distance_of_opponent*cos(angle_of_opponent-sector_angle), center.y() + distance_of_opponent*sin(angle_of_opponent-sector_angle));
       opponents_sectors.push_back(std::make_tuple(opponent, left_bound, right_bound));
 
       //* Check if the goal intersection is inside the opponent circle. If it is not, the opponent is ignored
       if((goal_intersection-opponent).norm() > opponent_circle_radius) continue;
 
-      GlobalVector2f opponent_intersection_1;
-      GlobalVector2f opponent_intersection_2;
-      GlobalVector2f opponent_intersection;
+      Vector2f opponent_intersection_1;
+      Vector2f opponent_intersection_2;
+      Vector2f opponent_intersection;
       int num_of_interesections = Geometry::getIntersectionOfCircles(circle, opponent_circle, opponent_intersection_1, opponent_intersection_2);
 
       if(num_of_interesections == 2){
@@ -847,7 +926,7 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* Opponent weight: mean of the inverse of the distance from the opponents
   //* Opponents target: mean of all opponents interesections   
   float total_opponents_weight = 0;
-  GlobalVector2f opponents_target = GlobalVector2f(0.f, 0.f);
+  Vector2f opponents_target = Vector2f(0.f, 0.f);
   if(opponents_interesections.size()>0){
     for(auto opponent_intersection:opponents_interesections){
       float opponent_weight = 1/(center - std::get<0>(opponent_intersection)).norm();
@@ -860,17 +939,17 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* Field limit weight: mean of the inverse of the distance from the field limits
   //* Field limit target: mean of all field border intersections
   float field_limit_weight = 0;
-  GlobalVector2f field_limit_target = GlobalVector2f(0.f, 0.f);
+  Vector2f field_limit_target = Vector2f(0.f, 0.f);
   int num_of_field_limits = 0;
   for(int i=0; i<field_border_intersections_bool.size(); i++){
     if(field_border_intersections_bool.at(i)){
 
       //* target_temp: weighted mean of goal intersection and opponents target (i.e. considering only goal and opponents)
-      GlobalVector2f target_temp = (goal_weight*goal_intersection + opponents_target)/(goal_weight+total_opponents_weight);
+      Vector2f target_temp = (goal_weight*goal_intersection + opponents_target)/(goal_weight+total_opponents_weight);
 
-      GlobalVector2f intersection1;
-      GlobalVector2f intersection2;
-      GlobalVector2f intersection;
+      Vector2f intersection1;
+      Vector2f intersection2;
+      Vector2f intersection;
       int num_of_interesections;
       if(i == 0) num_of_interesections = Geometry::getIntersectionOfLineAndCircle(right_field_border, circle, intersection1, intersection2);
       if(i == 1) num_of_interesections = Geometry::getIntersectionOfLineAndCircle(left_field_border, circle, intersection1, intersection2);
@@ -912,8 +991,8 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
 
   //** Clip the target to the circle
   Geometry::Line to_target = Geometry::Line(center, target-center);
-  GlobalVector2f target_intersection_1;
-  GlobalVector2f target_intersection_2;
+  Vector2f target_intersection_1;
+  Vector2f target_intersection_2;
   num_of_interesections = Geometry::getIntersectionOfLineAndCircle(to_target, circle, target_intersection_1, target_intersection_2);
   if(num_of_interesections == 2){
     target = (target_intersection_1 - target).norm() < (target_intersection_2 - target).norm() ? target_intersection_1 : target_intersection_2;
@@ -941,14 +1020,14 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* Compute the target sector and check if it is free (i.e. there are no opponents inside the sector)
   float angle_of_target = atan2(target.y()-center.y(), target.x()-center.x());
   float sector_angle = 15*M_PI/180; 
-  GlobalVector2f left_target_bound = GlobalVector2f(center.x() + 2*steplen*cos(angle_of_target+sector_angle), center.y() + 2*steplen*sin(angle_of_target+sector_angle));
-  GlobalVector2f right_target_bound = GlobalVector2f(center.x() + 2*steplen*cos(angle_of_target-sector_angle), center.y() + 2*steplen*sin(angle_of_target-sector_angle));
+  Vector2f left_target_bound = Vector2f(center.x() + 2*steplen*cos(angle_of_target+sector_angle), center.y() + 2*steplen*sin(angle_of_target+sector_angle));
+  Vector2f right_target_bound = Vector2f(center.x() + 2*steplen*cos(angle_of_target-sector_angle), center.y() + 2*steplen*sin(angle_of_target-sector_angle));
 
   bool is_target_sector_free = true;
   for(auto opp_sector:opponents_sectors){
-    GlobalVector2f opponent = std::get<0>(opp_sector);
-    GlobalVector2f left_opp_bound = std::get<1>(opp_sector);
-    GlobalVector2f right_opp_bound = std::get<2>(opp_sector);
+    Vector2f opponent = std::get<0>(opp_sector);
+    Vector2f left_opp_bound = std::get<1>(opp_sector);
+    Vector2f right_opp_bound = std::get<2>(opp_sector);
     if(theLibMisc.isInsideGlobalSector(center, left_target_bound, right_target_bound, 0.0, 2*steplen, left_opp_bound) ||
        theLibMisc.isInsideGlobalSector(center, left_target_bound, right_target_bound, 0.0, 2*steplen, right_opp_bound) || 
        theLibMisc.isInsideGlobalSector(center, left_target_bound, right_target_bound, 0.0, 2*steplen, opponent)){
@@ -959,6 +1038,7 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
 
   //* If the target sector is not free, scan the semi-circle in front of me to find a free target point
   if(!is_target_sector_free && !field_border_intersections.size()>0){
+    CYLINDER3D("module:LibStrikerProvider:strikerMovementPoint", target.x(), target.y(), 0.f, 0.f, 0.f, 0.f, 10, 100, ColorRGBA::black);
     
     float right_angle = theLibMisc.radiansToDegree(theLibMisc.angleBetweenGlobalVectors(center, target, right_limit));
     float left_angle = theLibMisc.radiansToDegree(theLibMisc.angleBetweenGlobalVectors(center, target, left_limit));
@@ -971,9 +1051,9 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
     int num_opponents_on_left = 0;
     int num_opponents_on_right = 0;
     for(auto opp_sector:opponents_sectors){
-      GlobalVector2f opponent = std::get<0>(opp_sector);
-      GlobalVector2f left_opp_bound = std::get<1>(opp_sector);
-      GlobalVector2f right_opp_bound = std::get<2>(opp_sector);
+      Vector2f opponent = std::get<0>(opp_sector);
+      Vector2f left_opp_bound = std::get<1>(opp_sector);
+      Vector2f right_opp_bound = std::get<2>(opp_sector);
       Geometry::Line to_goal = Geometry::Line(center, goal_intersection-center);
       if(Geometry::isPointLeftOfLine(center, goal_intersection, opponent)){
         left_side_weight += 1/std::abs(Geometry::getDistanceToLine(to_goal, opponent)) * 1/(center-opponent).norm();
@@ -994,15 +1074,15 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
 
     for(int i=0; i<int(first_angle) && !found_target; i+=5){
       float point_angle = scan_left_first ? target_angle*M_PI/180 + i*M_PI/180 : target_angle*M_PI/180 - i*M_PI/180;
-      GlobalVector2f point = GlobalVector2f(center.x() + steplen*cos(point_angle), center.y() + steplen*sin(point_angle));
-      GlobalVector2f left_point = GlobalVector2f(center.x() + steplen*cos(point_angle+sector_angle), center.y() + steplen*sin(point_angle+sector_angle));
-      GlobalVector2f right_point = GlobalVector2f(center.x() + steplen*cos(point_angle-sector_angle), center.y() + steplen*sin(point_angle-sector_angle));
+      Vector2f point = Vector2f(center.x() + steplen*cos(point_angle), center.y() + steplen*sin(point_angle));
+      Vector2f left_point = Vector2f(center.x() + steplen*cos(point_angle+sector_angle), center.y() + steplen*sin(point_angle+sector_angle));
+      Vector2f right_point = Vector2f(center.x() + steplen*cos(point_angle-sector_angle), center.y() + steplen*sin(point_angle-sector_angle));
 
       bool is_valid = true;
       for(auto opp_sector:opponents_sectors){
-        GlobalVector2f opponent = std::get<0>(opp_sector);
-        GlobalVector2f left_opp_bound = std::get<1>(opp_sector);
-        GlobalVector2f right_opp_bound = std::get<2>(opp_sector);
+        Vector2f opponent = std::get<0>(opp_sector);
+        Vector2f left_opp_bound = std::get<1>(opp_sector);
+        Vector2f right_opp_bound = std::get<2>(opp_sector);
         if(theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, left_point) ||
            theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, right_point) ||
            theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, point)){
@@ -1019,15 +1099,15 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
 
     for(int i=0; i<int(second_angle) && !found_target; i+=5){
       float point_angle = scan_left_first ? target_angle*M_PI/180 - i*M_PI/180 : target_angle*M_PI/180 + i*M_PI/180;
-      GlobalVector2f point = GlobalVector2f(center.x() + steplen*cos(point_angle), center.y() + steplen*sin(point_angle));
-      GlobalVector2f left_point = GlobalVector2f(center.x() + steplen*cos(point_angle+sector_angle), center.y() + steplen*sin(point_angle+sector_angle));
-      GlobalVector2f right_point = GlobalVector2f(center.x() + steplen*cos(point_angle-sector_angle), center.y() + steplen*sin(point_angle-sector_angle));
+      Vector2f point = Vector2f(center.x() + steplen*cos(point_angle), center.y() + steplen*sin(point_angle));
+      Vector2f left_point = Vector2f(center.x() + steplen*cos(point_angle+sector_angle), center.y() + steplen*sin(point_angle+sector_angle));
+      Vector2f right_point = Vector2f(center.x() + steplen*cos(point_angle-sector_angle), center.y() + steplen*sin(point_angle-sector_angle));
 
       bool is_valid = true;
       for(auto opp_sector:opponents_sectors){
-        GlobalVector2f opponent = std::get<0>(opp_sector);
-        GlobalVector2f left_opp_bound = std::get<1>(opp_sector);
-        GlobalVector2f right_opp_bound = std::get<2>(opp_sector);
+        Vector2f opponent = std::get<0>(opp_sector);
+        Vector2f left_opp_bound = std::get<1>(opp_sector);
+        Vector2f right_opp_bound = std::get<2>(opp_sector);
         if(theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, left_point) ||
            theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, right_point) ||
            theLibMisc.isInsideGlobalSector(center, left_opp_bound, right_opp_bound, 0.0, 2*steplen, point)){
@@ -1048,8 +1128,8 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   
   // Only for debug drawing
   angle_of_target = atan2(target.y()-center.y(), target.x()-center.x()); 
-  left_target_bound = GlobalVector2f(center.x() + 2*steplen*cos(angle_of_target+sector_angle), center.y() + 2*steplen*sin(angle_of_target+sector_angle));
-  right_target_bound = GlobalVector2f(center.x() + 2*steplen*cos(angle_of_target-sector_angle), center.y() + 2*steplen*sin(angle_of_target-sector_angle));
+  left_target_bound = Vector2f(center.x() + 2*steplen*cos(angle_of_target+sector_angle), center.y() + 2*steplen*sin(angle_of_target+sector_angle));
+  right_target_bound = Vector2f(center.x() + 2*steplen*cos(angle_of_target-sector_angle), center.y() + 2*steplen*sin(angle_of_target-sector_angle));
 
 
   //** BASIC DEBUG DRAWING
@@ -1075,7 +1155,7 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* Lines to field borders
   for(int i = 0; i < field_border_limits.size(); i++){
     if(field_border_intersections_bool.at(i)){
-      GlobalVector2f limit = field_border_limits.at(i);
+      Vector2f limit = field_border_limits.at(i);
       CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", limit.x(), limit.y(), 0.f, 0.f, 0.f, 0.f, 30, 1, ColorRGBA::brown);
       LINE3D("module:LibStrikerProvider:strikerDribblePointVerbose", center.x(), center.y(), 0.f, limit.x(), limit.y(), 0.f, 2.5, ColorRGBA::brown);
     }
@@ -1083,7 +1163,7 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   //* Lines to field borders intersections
   for(int i = 0; i < field_border_intersections.size(); i++){
     if(field_border_intersections_bool.at(i)){
-      GlobalVector2f intersection = field_border_intersections.at(i);
+      Vector2f intersection = field_border_intersections.at(i);
       CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", intersection.x(), intersection.y(), 0.f, 0.f, 0.f, 0.f, 30, 1, ColorRGBA::violet);
       LINE3D("module:LibStrikerProvider:strikerDribblePointVerbose", center.x(), center.y(), 0.f, intersection.x(), intersection.y(), 0.f, 2.5, ColorRGBA::violet);
     }
@@ -1091,9 +1171,9 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
   
   //* Lines to opponents and their intersections
   for(auto opponent_sector:opponents_sectors){
-    GlobalVector2f opponent = std::get<0>(opponent_sector);
-    GlobalVector2f intersection_1 = std::get<1>(opponent_sector);
-    GlobalVector2f intersection_2 = std::get<2>(opponent_sector);
+    Vector2f opponent = std::get<0>(opponent_sector);
+    Vector2f intersection_1 = std::get<1>(opponent_sector);
+    Vector2f intersection_2 = std::get<2>(opponent_sector);
     CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", opponent.x(), opponent.y(), 0.f, 0.f, 0.f, 0.f, 15, 1, ColorRGBA::red);
     CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", intersection_1.x(), intersection_1.y(), 0.f, 0.f, 0.f, 0.f, 5, 1, ColorRGBA::red);
     CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", intersection_2.x(), intersection_2.y(), 0.f, 0.f, 0.f, 0.f, 5, 1, ColorRGBA::red);
@@ -1104,13 +1184,14 @@ GlobalVector2f LibStrikerProvider::getStrikerDribblePoint(){
     CIRCLE3D("module:LibStrikerProvider:strikerDribblePointVerbose", circle.center.x(), circle.center.y(), 0.f, circle.radius, 2.5, ColorRGBA::red);
   }
   for(auto opponents_intersections:opponents_interesections){
-    GlobalVector2f intersection = std::get<1>(opponents_intersections);
+    Vector2f intersection = std::get<1>(opponents_intersections);
     CYLINDER3D("module:LibStrikerProvider:strikerDribblePointVerbose", intersection.x(), intersection.y(), 0.f, 0.f, 0.f, 0.f, 15, 1, ColorRGBA::blue);
     LINE3D("module:LibStrikerProvider:strikerDribblePointVerbose", center.x(), center.y(), 0.f, intersection.x(), intersection.y(), 0.f, 2.5, ColorRGBA::blue);
   }
 
   return target.hasNaN() ? goal_intersection : target;
 }
+
 
 bool LibStrikerProvider::shouldKick(bool currentlyKicking, float kickIntervalThreshold) const {
   // currentlyKicking: true if the robot is in GoToBallAndKick state, false if in GoToBallAndDribble state
@@ -1151,7 +1232,7 @@ bool LibStrikerProvider::shouldKick(bool currentlyKicking, float kickIntervalThr
   // kick if the robot has a good angle to the goal and the ball is seen enough in the last 60 frames (seenPercentage), 
   // and the robot is not too far from the goal (max 4 meters)
   else if (interval                     > (currentlyKicking ? -1 : kickIntervalThreshold) &&
-           theRobotPose.translation.x() > (currentlyKicking ? 0.f : 800.f) && // TODO (must be tuned with the real robots) considering that the penalty area starts at 2850
+           theRobotPose.translation.x() > (currentlyKicking ? 0.f : 1650.f) && // TODO (must be tuned with the real robots) considering that the penalty area starts at 2850
            theBallModel.seenPercentage  > (currentlyKicking ? 0 : 40)) 
     return true; 
 
@@ -1164,6 +1245,108 @@ bool LibStrikerProvider::shouldKick(bool currentlyKicking, float kickIntervalThr
     return false;
 }
 
+
+
+bool LibStrikerProvider::strikerPassCommonConditions(int hysteresisSign) const {
+  //the conditions branch depending on whether the striker
+  //is under immediate pressure to send the ball *somewhere*.
+  //This is true if the striker is close to the ball
+  //and either an opponent is immediately adjacent to the striker,
+  //    or the striker is close to the goal.
+  //in these conditions, we don't want the striker to take too much time
+  //walking around the ball.
+  //TODO this will have to change when we have contrast
+  bool act_asap = (
+    theFieldBall.positionRelative.squaredNorm()<sqr(300.f) && (
+      theRobotPose.translation.x() > theFieldDimensions.xPosOpponentPenaltyMark ||
+      sqrDistanceOfClosestOpponentToPoint(theRobotPose.translation)<sqr(500.0f)
+    )
+  );
+  if (act_asap) {
+    //if the striker is pressed to act, then the choice between kick or pass
+    //depends solely on which action is faster to execute in the immediate future
+    //(remember that if the control flow gets here, there *is* an available pass).
+    //Thus, choose to pass if it's easier than kicking,
+    //measured in terms of how much walk-around-the-ball the striker needs
+    //(because we've already assume the striker is close to the ball)
+    Pose2f goal_target = goalTarget(act_asap, false);
+    Angle kickAngle = Angle(atan2f(
+      goal_target.translation.y()-theRobotPose.translation.y(),
+      goal_target.translation.x()-theRobotPose.translation.x()
+    ));
+    Angle passAngle = Angle(atan2f(
+      thePassShare.passTarget.translation.y()-theRobotPose.translation.y(),
+      thePassShare.passTarget.translation.x()-theRobotPose.translation.x()
+    ));
+    Angle angDistToKick = theRobotPose.rotation.diffAbs(kickAngle);
+    Angle angDistToPass = theRobotPose.rotation.diffAbs(passAngle);
+    // adding a constant epsilon in order to make the striker prefer passing
+    // if the two angles are practically equal
+    bool shouldPass = (angDistToPass <= angDistToKick + pi/30 + hysteresisSign*pi/10);
+    /*
+    if (shouldPass) {
+      std::cout << "Act ASAP: pass" << '\n';
+    }
+    else {
+      std::cout << "Act ASAP: carry" << '\n';
+    }
+    */
+    return shouldPass;
+  }
+  else {
+    //if the striker is not under immediate pressure,
+    //it can actually reason and choose whether to kick or pass.
+    //for now, the only discriminating condition in this case is:
+    //only pass if the passtarget is sufficiently clear of opponents
+    //(the pass routines only find the target w/ highest opp distance, but don't set a minimum threshold)
+    bool shouldPass = (sqrDistanceOfClosestOpponentToPoint(thePassShare.passTarget.translation) >= sqr(500.0f - hysteresisSign*100.0f));
+    /*
+    if (shouldPass) {
+      std::cout << "Act normal: pass" << '\n';
+    }
+    else {
+      std::cout << "Act normal: carry" << '\n';
+    }
+    */
+    return shouldPass;
+  }
+
+  
+}
+
+/**
+ * PD controller that returns the approaching speed.
+ * @param range The distance range taken to pass from speed 1 to the specified minimum speed
+ * @param kp The controller proportional gain
+ * @param kd The controller derivative gain
+ * @param minSpeed The minimum speed allowed 
+ * @return speed in Pose2f in a range from 1 to minSpeed 
+* **/
+Pose2f LibStrikerProvider::getApproachSpeed(Rangef range, float kp, float kd, float minSpeed) const{
+  if(theFieldBall.recentBallPositionRelative().norm() > range.max)
+    return Pose2f(1,1,1);
+
+  if(kd>kp)
+    OUTPUT_WARNING("Derivative gain is greater than proportional gain, this may lead to an extremely slow convergence");
+
+  if(kd == 0)
+    OUTPUT_WARNING("Derivative gain is set to 0, this may lead a to lack of convergence due to rippling");
+
+  Vector2f target = goalTarget(true, true);
+
+  float e_angle = abs((theRobotPose.inversePose * target).angle()),
+        e_p = mapToRange(theFieldBall.recentBallPositionRelative().norm()+e_angle  , range.min, range.max, minSpeed, 1.f),
+        e_d = theMotionInfo.speed.translation.norm()/1e3,
+        out = clip(kp*e_p - kd*e_d, minSpeed, 1.f);
+
+  return Pose2f(out,out,out);
+}
+
+/**
+ * @param kickAsap a bool attribute, is true when you have to kick as soon as possible
+ * @param kickRight a bool attribute, is true when you want to kick with right foot
+ * @return The best kickType chosen according to the opponent goal ditance
+* **/
 KickInfo::KickType LibStrikerProvider::getKick(bool kickAsap, bool kickRight) const{
   //Rangef 
   std::array<Rangef, 3> rgs = {Rangef(0.f, 1000.f), Rangef(1000.f, INFINITY), Rangef(INFINITY, INFINITY)};
@@ -1187,135 +1370,91 @@ KickInfo::KickType LibStrikerProvider::getKick(bool kickAsap, bool kickRight) co
 }
 
 
-KickInfo::KickType LibStrikerProvider::getWalkKick(GlobalVector2f target) const {
-  
-  /**  KICKTYPES:
-   * * Walk Kick Types:
-   * 
-   * * KickType                                     | rotation [deg] | range [mm] | execution time [ms] | real range [mm] (2024)
-   *   --------------------------------------------------------------------------------------------------------------------------
-   *   walkForwardsRight/Left                       | 0              | 400-1000   | 600                 |
-   *   walkForwardsRightLong/LeftLong               | 0              | 2500-3500  | 350                 |
-   *   walkSidewardsRightFootToRight/LeftFootToLeft | 90/-90         | 2000       | 400                 |
-   *   walkTurnRightFootToLeft/LeftFootToRight      | -45/45 deg     | 400-2100   | 600                 |
-   *   walkForwardStealBallRight/Left               | -90/90 deg     | 200        | 0                   |
-   *   walkForwardsRightAlternative/LeftAlternative | 3/-3 deg       | 2100       | 600                 |
-  */
-
-  float distance = (theRobotPose.inversePose * target).norm();
-  float angle = std::abs(theLibMisc.radiansToDegree((theRobotPose.inversePose * target).angle()));  
-  LocalVector2f ball_relative = theFieldBall.recentBallPositionRelative();
-
-  // compute left or right foot
-  bool left = false;
-  if(ball_relative.y() > 0) left = true;
-
-  // LONG_DISTANCES: 2000-3500
-  // NOTE: walkForwardsLeftLong/RightLong have a range of 2500-3500, so this condition is a bit forced
-  if (distance>=2000 && distance<3500) {
-    if (left) return KickInfo::KickType::walkForwardsLeftLong;
-    else return KickInfo::KickType::walkForwardsRightLong;
-  }
-
-  // SHORT_DISTANCES: 400-2000
-  // TODO: this should be splitted into 400-1000 (short) and 1000-2000 (mid), but for now we don't have a walkkick with range 1000-2000
-  else{
-
-    // Forward: 400-1000
-    if (angle<=50){
-      if (left) return KickInfo::KickType::walkForwardsLeft;
-      else return KickInfo::KickType::walkForwardsRight;
-    }
-
-    // Forward-Turn: 400-2100
-    else if (angle>50 && angle<=80 && ball_relative.norm() < 500){
-      if (left) return KickInfo::KickType::walkTurnRightFootToLeft;
-      else return KickInfo::KickType::walkTurnLeftFootToRight;
-    }
-
-    // Sideward: 2000
-    else if (angle>80 && angle<=135 && ball_relative.norm() < 500){
-      if (left) return KickInfo::KickType::walkSidewardsLeftFootToLeft;
-      else return KickInfo::KickType::walkSidewardsRightFootToRight;
-    }
-
-    // Backward
-    else {
-      // TODO: Colpo di tacco !! :D
-      if (left) return KickInfo::KickType::walkForwardsLeft;
-      else return KickInfo::KickType::walkForwardsRight;
-    }
-  }
-  
-  // default
-  if (left) return KickInfo::KickType::walkForwardsLeft;
-  else return KickInfo::KickType::walkForwardsLeft;
-};
-
-GlobalVector2f LibStrikerProvider::getStrikerPositionSpecial() const{
-  GlobalVector2f target = Vector2f(0.f, 0.f);
-  GlobalVector2f ball = theFieldBall.recentBallPositionOnField();
+Vector2f LibStrikerProvider::getStrikerPositionSpecial(bool ballSeen) const{
+  Vector2f target = Vector2f(0.f, 0.f);
+  Vector2f bestBall = theFieldBall.recentBallPositionOnField();
   switch(theGameState.state){
-    
-    // Own free kicks
+  
+  /*  Own Free Kicks  */
     case GameState::State::ownCorner:{
-      target = ball;
+      target = ballSeen ? theFieldBall.recentBallPositionOnField() : theTeamBallModel.position;
       break;
     }
     case GameState::State::ownKickIn:{
-      target = ball;
+      target = ballSeen ? theFieldBall.recentBallPositionOnField() : theTeamBallModel.position;
       break;
     }
     case GameState::State::ownPenaltyKick:{
-      target = ball;
+      target = ballSeen ? theFieldBall.recentBallPositionOnField() : theTeamBallModel.position;
       break;
+
     }
     case GameState::State::ownPushingKick:{
-      target = ball;
+      target = ballSeen ? theFieldBall.recentBallPositionOnField() : theTeamBallModel.position;
       break;
+
     }
     case GameState::State::ownGoalKick:{
-      target = (theLibSpec.isGoaliePlaying()) ? Vector2f(-150.f, 0.f) : ball;
+      target = (theLibSpec.isGoaliePlaying()) ? Vector2f(-150.f, 0.f) : bestBall;
       break;
     }
     
-    // Opponents free kicks
+
+  /*  Opponent Free kicks   */
     case GameState::State::opponentCorner:{
-      target = (ball.y() > 0) ? //left corner
-                GlobalVector2f( (theFieldDimensions.xPosOwnGoalArea+theFieldDimensions.xPosOwnPenaltyMark)/2 , 1300) :
-                GlobalVector2f( (theFieldDimensions.xPosOwnGoalArea+theFieldDimensions.xPosOwnPenaltyMark)/2 , -1300);
+      target = (theTeamBallModel.position.y() > 0) ? //left corner
+                Vector2f( (theFieldDimensions.xPosOwnGoalArea+theFieldDimensions.xPosOwnPenaltyMark)/2 , 1300) : //theFieldDimensions.yPosLeftSideline-750);
+                Vector2f( (theFieldDimensions.xPosOwnGoalArea+theFieldDimensions.xPosOwnPenaltyMark)/2 , -1300); //theFieldDimensions.yPosRightSideline+750);
       break;
+
     }
     case GameState::State::opponentKickIn:{
-      if(ball.y() > 0) target = GlobalVector2f(ball.x() - 900.f, ball.y() - 300.f);
-      else target = GlobalVector2f(ball.x() - 900.f, ball.y() + 300.f);
-      if(target.x() < - 4000.f) target = GlobalVector2f(-4100.f, ball.y() > 0 ? 2100 : -2100); 
+      target = theLibSpec.getPositionCoveringDangerousOpponent(true);    
       break;
+
     }
+
     case GameState::State::opponentPushingKick:{
-      Line2 ball_goal = Line2::Through(ball, GlobalVector2f(theFieldDimensions.xPosOwnGroundLine, 0.f));
-      Line2 parallel = Line2::Through(ball - GlobalVector2f(800.f, 0.f), ball - GlobalVector2f(800.f, 300.f));
+      Line2 ball_goal = Line2::Through(theFieldBall.recentBallPositionOnField(), Vector2f(theFieldDimensions.xPosOwnGroundLine, 0.f));
+      Line2 parallel = Line2::Through(theFieldBall.recentBallPositionOnField() - Vector2f(800.f, 0.f), theFieldBall.recentBallPositionOnField() - Vector2f(800.f, 300.f));
       target = ball_goal.intersection(parallel);
       break;
-    }
-    case GameState::State::opponentGoalKick:{
-      target = ball - GlobalVector2f(1000.f, 0.f);
-      break;
+
     }
     
-    // TODO: add the case of the penalty kick
-    case GameState::State::opponentPenaltyKick:
+    case GameState::State::opponentGoalKick:{
+      int numActiveTeammates = theTeamData.numberOfActiveTeammates; 
+      if(numActiveTeammates < 2){
+        target = Vector2f(-1500.f, 0.f);  
+      }
+      else if(numActiveTeammates < 4){
+        target = Vector2f(500.f, 0.f);
+      }
+      else{ //if(numActiveTeammates < 6){
+        Line2 ball_goal = Line2::Through(theFieldBall.recentBallPositionOnField(), Vector2f(theFieldDimensions.xPosOwnGroundLine, 0.f));
+        Line2 parallel = Line2::Through(Vector2f(1500.f, -500.f), Vector2f(1500.f, 500.f));
+        target =  ball_goal.intersection(parallel);
+      }
+      // else{
+      //   Line2 ball_goal = Line2::Through(theFieldBall.recentBallPositionOnField(), Vector2f(theFieldDimensions.xPosOwnGroundLine, 0.f));
+      //   Line2 parallel = Line2::Through(Vector2f(2500.f, -500.f), Vector2f(2500.f, 500.f));
+      //   target = ball_goal.intersection(parallel);  
+      // }
       break;
+    }
+    // case GameState::State::opponentPenaltyKick:
+    //   goto opponentPenaltyKick; return;
   }
-  return target.hasNaN() ? GlobalVector2f(0.f,0.f) : target;
+  return target.hasNaN() ? Vector2f(0.f,0.f) : target;
 
 }
 
-GlobalVector2f LibStrikerProvider::getStrikerPosition() const{
-  GlobalVector2f target;
-  GlobalVector2f ball = theFieldBall.recentBallPositionOnField();
 
-  // Free kick
+Vector2f LibStrikerProvider::getStrikerPosition(bool ballSeen) const{
+  Vector2f target;
+  Vector2f bestBall = ballSeen ? theFieldBall.recentBallPositionOnField() : theTeamBallModel.position;
+
+  // If it's a freeKick situation
   if(theGameState.state == GameState::State::ownCorner          ||
      theGameState.state == GameState::State::ownGoalKick        ||
      theGameState.state == GameState::State::ownKickIn          ||
@@ -1325,14 +1464,14 @@ GlobalVector2f LibStrikerProvider::getStrikerPosition() const{
      theGameState.state == GameState::State::opponentCorner     ||
      theGameState.state == GameState::State::opponentGoalKick   ||
      theGameState.state == GameState::State::opponentKickIn     ||
-     theGameState.state == GameState::State::opponentPushingKick){
-    target = getStrikerPositionSpecial();
-  }
-  
-  // Normal play
-  else{
-    target = ball;
-  }
+     theGameState.state == GameState::State::opponentPushingKick     
+    )
+    target = getStrikerPositionSpecial(ballSeen);
+  else
+    // otherwise is a normal situation
+    target = bestBall;
 
-  return target.hasNaN() ? GlobalVector2f(0.f,0.f) : target;
+  CYLINDER3D("module:LibStrikerProvider:strikerPosition", target.x(), target.y(), 0.0f, 0.0f, 0.0f, 0.0f, 100.0f, 0.0f, ColorRGBA::red);
+
+  return target.hasNaN() ? Vector2f(0.f,0.f) : target;
 }

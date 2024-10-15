@@ -67,8 +67,6 @@ private:
   /** Returns whether there is any obstacle close to point. */
   bool obstacleExistsAroundPoint(const Vector2f& point) const;
 
-  GlobalPose2f nearestOpponentToPoint(const GlobalVector2f& p) const;
-
 
   // ===== FOR INTERNAL USE =====
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Platform/BHAssert.h" // Our Eigen extensions use ASSERT
-#include <strstream>
 
 // Extend the Eigen classes with our own methods (see: http://eigen.tuxfamily.org/dox-devel/TopicCustomizingEigen.html)
 #define EIGEN_MATRIXBASE_PLUGIN "Tools/Math/EigenMatrixBaseExtensions.h"
@@ -13,12 +12,8 @@
 #include <Eigen/StdVector>
 #include <Eigen/Dense>
 #include "Tools/Streams/Eigen.h"
-#include "Tools/Meta/StrongTypedef.h"
 
 class Angle;
-
-STRONG_TYPEDEF(RadAngle, Angle)
-STRONG_TYPEDEF(DegAngle, Angle)
 
 using Array2a = Eigen::Array<Angle, 2, 1>;
 using Array2d = Eigen::Array2d;
@@ -44,19 +39,6 @@ using Vector6d = Eigen::Matrix<double, 6, 1>;
 using Vector6f = Eigen::Matrix<float, 6, 1>;
 using VectorXd = Eigen::VectorXd;
 using VectorXf = Eigen::VectorXf;
-
-STRONG_TYPEDEF(GlobalVector2i, Eigen::Vector2i)
-STRONG_TYPEDEF(LocalVector2i, Eigen::Vector2i)
-
-STRONG_TYPEDEF(GlobalVector2f, Eigen::Vector2f)
-STRONG_TYPEDEF(LocalVector2f, Eigen::Vector2f)
-
-// -0xDEADBEEF corresponds to a large number (6.2598534e18)
-#define InvalidGlobalVector2f GlobalVector2i(-0xDEADBEEF, 0);
-#define InvalidLocalVector2f LocalVector2i(-0xDEADBEEF, 0);
-
-#define InvalidGlobalVector2f GlobalVector2f(-0xDEADBEEF, 0);
-#define InvalidLocalVector2f LocalVector2f(-0xDEADBEEF, 0);
 
 using RowVector2d = Eigen::RowVector2d;
 using RowVector2f = Eigen::RowVector2f;

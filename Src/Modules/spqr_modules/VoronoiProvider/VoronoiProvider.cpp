@@ -95,7 +95,7 @@ std::vector<std::tuple<Vector2f, Vector2f, Vector2f>> VoronoiProvider::BowyerWat
         std::vector<std::tuple<Vector2f, Vector2f, Vector2f>> bad_triangles;
         for(auto triangle: triangulation){
             Geometry::Circle circumcenter = Geometry::getCircle(std::get<0>(triangle), std::get<1>(triangle), std::get<2>(triangle));
-            if((opp-circumcenter.center).norm() < circumcenter.radius){
+            if(theLibMisc.distanceVec(opp, circumcenter.center) < circumcenter.radius){
                 bad_triangles.push_back(triangle);
             }
         }
@@ -176,7 +176,7 @@ std::vector<std::tuple<Vector2f, Vector2f, Vector2f>> VoronoiProvider::BowyerWat
 
             if(opp != std::get<0>(triangle) && opp != std::get<1>(triangle) && opp != std::get<2>(triangle)){
                 Geometry::Circle circumcenter = Geometry::getCircle(std::get<0>(triangle), std::get<1>(triangle), std::get<2>(triangle));
-                if((opp-circumcenter.center).norm() < circumcenter.radius){
+                if(theLibMisc.distanceVec(opp, circumcenter.center) < circumcenter.radius){
                     triangulation.erase(triangulation.begin()+j); 
                 }
                 else{ 

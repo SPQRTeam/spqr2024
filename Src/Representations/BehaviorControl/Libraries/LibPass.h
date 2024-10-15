@@ -45,7 +45,28 @@ STREAMABLE(LibPass,
   /**
    * TODO: documentazione
    */
-  FUNCTION(float(Vector2f position)) getInversePassUtility,
+  FUNCTION(float(Vector2f position)) getInversePassUtility;
+
+
+  /**
+   * <no doc was available, easy guess>
+   * Returns the passing information of the striker's PassShare.
+   * Despite the name's first impression, this is useful to anyone BUT the striker.
+   * Most likely the jolly.
+   * 
+   * @returns The following fields of the striker's PassShare, in this order:
+   *          <readyPass, passingTo, passTarget>
+   */
+  FUNCTION(std::tuple<int,int,Pose2f>()) strikerPassShare;
+
+
+  /**
+   * @brief Given the target pose of the passage return the best kick.
+   * 
+   * @param pose Target pose of the passage
+   * @return (KickInfo::KickType) kickType.
+   */
+  FUNCTION(KickInfo::KickType(Vector2f targe)) getKickType,
 
   (int) isTargetToPass,
 });

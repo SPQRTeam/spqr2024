@@ -27,6 +27,7 @@
 #include "Tools/Communication/RobotStatus.h"
 #include "Tools/Communication/BNTP.h"
 #include "Representations/BehaviorControl/PlayerRole.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
 #include "Representations/Communication/MessageManagement.h"
 #include "Representations/Sensing/ArmContactModel.h"
 #include "Representations/Modeling/TeamBallModel.h"
@@ -49,6 +50,7 @@ MODULE(DebugMessageHandler,
     REQUIRES(MessageManagement),
     REQUIRES(FallDownState),
     REQUIRES(GroundContactState),
+    REQUIRES(LibMisc),
     USES(RobotInfo),
 
     USES(BallModel),
@@ -65,14 +67,13 @@ MODULE(DebugMessageHandler,
 
     LOADS_PARAMETERS(
     {,
-        (int) debugInterval, // time in ms between two debug messages
-        (std::string) tcm_pc_addr, // ip address of your PC
+       (int) messageInterval, //time in ms between two debug messages
     }),
 });
 
 /**
  * @class DebugMessageHandler
- * A module for sending debug messages to TCM
+ * A modules for sending debug messages to TCM
  */
 class DebugMessageHandler : public DebugMessageHandlerBase
 {
@@ -80,18 +81,32 @@ public:
   DebugMessageHandler();
 
 private:
+    struct oldMessages{
+    Vector2f RobotPose = Eigen::Vector2f::Zero(); 
+    float Rob_movement_Treshold = 1000.0;
+    Vector2f BallPosition = Eigen::Vector2f::Zero();
+    float Ball_pos_movement_Threshold = 1000.0;
+    int num_opponents = 0;
+    };
+
+    oldMessages oldMessagesInstance;
 
     UdpComm socket;
+    UdpComm challengeSocket;
 
+    CompressedTeamCommunication::TypeRegistry teamCommunicationTypeRegistry;
+    const CompressedTeamCommunication::Type* teamMessageType;
+
+    //BNTP theBNTP;
     mutable RobotStatus theRobotStatus;
 
     // output stuff
     mutable unsigned timeLastSent = 0;
 
     #ifdef TARGET_ROBOT
-      const char* tcm_ip_addr = tcm_pc_addr.c_str(); // change this with your IP
+      const char* tcm_ip_addr = "10.0.19.90"; //LUIGI
     #else
-      const char* tcm_ip_addr = "0.0.0.0";
+      const char* tcm_ip_addr = "127.0.0.1";
     #endif
 
     void update(DebugMessageOutputGenerator& debugGenerator) override;

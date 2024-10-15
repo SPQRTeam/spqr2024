@@ -56,7 +56,7 @@ private:
     float ownPenaltyAreaMargin = -1.f;
     float opponentPenaltyAreaMargin = -1.f;
     uint8_t lastPenalty = PENALTY_NONE;
-    GlobalPose2f lastPose;
+    Pose2f lastPose;
     bool manuallyPlaced = false;
   };
 
@@ -89,7 +89,7 @@ private:
   static const float footLength; /**< foot length for position check and manual placement at center circle. */
   static const float safeDistance; /**< safe distance from penalty areas for manual placement. */
   static const float dropHeight; /**< height at which robots are manually placed so the fall a little bit and recognize it. */
-  GlobalPose2f lastBallContactPose; /**< Position where the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degrees). */
+  Pose2f lastBallContactPose; /**< Position where the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degrees). */
   unsigned lastBallContactTime = 0;
   FieldDimensions fieldDimensions;
   BallSpecification ballSpecification;
@@ -277,7 +277,7 @@ private:
    * @param minRobot The number of the first field player in the team (1 or numOfRobots/2+1).
    * @param poses Possible placement poses for the robot.
    */
-  void placeFromSet(int robot, int minRobot, const GlobalPose2f* poses);
+  void placeFromSet(int robot, int minRobot, const Pose2f* poses);
 
   /**
    * Manually place the field players of the offensive team if required.

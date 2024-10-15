@@ -2,16 +2,21 @@
  * @file JollyCard.cpp
  *
  * This file implements a basic behavior for the Jolly.
+ *
+ * @author Emanuele Antonioni
  */
 
-#include "Representations/BehaviorControl/Skills.h"
-#include "Representations/BehaviorControl/Libraries/LibJolly.h"
-#include "Representations/BehaviorControl/Libraries/LibMisc.h"
-#include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/BehaviorControl/FieldBall.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Tools/BehaviorControl/Framework/Card/Card.h"
 #include "Tools/BehaviorControl/Framework/Card/CabslCard.h"
+#include "Representations/BehaviorControl/Skills.h"
+#include "Representations/BehaviorControl/FieldBall.h"
+#include "Representations/BehaviorControl/Libraries/LibMisc.h"
+#include "Representations/BehaviorControl/Libraries/LibJolly.h"
+#include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/Modeling/RobotPose.h"
+
+#include "Representations/Communication/GameInfo.h"
+
 #include "Tools/Math/BHMath.h"
 
 CARD(JollyCard,
@@ -28,14 +33,15 @@ CARD(JollyCard,
   CALLS(ArmObstacleAvoidance),
   CALLS(TurnAngle),
 
-  REQUIRES(LibJolly),
-  REQUIRES(LibMisc),
+  REQUIRES(GameInfo), 
   REQUIRES(FieldBall),
+  REQUIRES(LibMisc),
+  REQUIRES(LibJolly),
   REQUIRES(FieldDimensions),
   REQUIRES(RobotPose),
-
   DEFINES_PARAMETERS(
   {,
+    (float)(0.8f) walkSpeed,
     (int)(100) initialWaitTime,
     (int)(5000) ballSeenTimeout,
   }),
@@ -75,14 +81,14 @@ class JollyCard : public JollyCardBase
     {
       transition
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibJolly.jollyPosition.x(), theLibJolly.jollyPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibJolly.getJollyPosition().x(), theLibJolly.getJollyPosition().y()).translation;
         if(target.norm() >= 200.f && target.norm() < 1200.f) goto goToTargetSideward;
         else if(target.norm() < 200.f) goto waitAndTurn;
       }
 
       action
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibJolly.jollyPosition.x(), theLibJolly.jollyPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibJolly.getJollyPosition().x(), theLibJolly.getJollyPosition().y()).translation;
         theWalkToPointSkill(target);
         theArmObstacleAvoidanceSkill();
         theLookAtPointSkill(Vector3f(target.x(), target.y(), 100.f));
@@ -93,17 +99,17 @@ class JollyCard : public JollyCardBase
     {
       transition
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibJolly.jollyPosition.x(), theLibJolly.jollyPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibJolly.getJollyPosition().x(), theLibJolly.getJollyPosition().y()).translation;
         if(target.norm() >= 1000.f) goto goToTargetForward;
         else if(target.norm() < 200.f) goto waitAndTurn;   
       }
 
       action
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibJolly.jollyPosition.x(), theLibJolly.jollyPosition.y()).translation;
-        LocalVector2f relative_ball = theFieldBall.recentBallPositionRelative();
+        Vector2f target = theLibMisc.glob2Rel(theLibJolly.getJollyPosition().x(), theLibJolly.getJollyPosition().y()).translation;
+        Vector2f relative_ball = theFieldBall.recentBallPositionRelative();
         float angle_to_ball = atan2(relative_ball.y(), relative_ball.x());
-        theWalkAtAbsoluteSpeedSkill(LocalPose2f(angle_to_ball, target.x(), target.y()));
+        theWalkAtAbsoluteSpeedSkill(Pose2f(angle_to_ball, target.x(), target.y()));
         theArmObstacleAvoidanceSkill();
         if(theFieldBall.timeSinceBallWasSeen < ballSeenTimeout) theLookAtBallSkill();
         else theLookAtGlobalBallSkill();
@@ -114,21 +120,22 @@ class JollyCard : public JollyCardBase
     {
       transition
       {
-        LocalVector2f target = theLibMisc.glob2Rel(theLibJolly.jollyPosition.x(), theLibJolly.jollyPosition.y()).translation;
+        Vector2f target = theLibMisc.glob2Rel(theLibJolly.getJollyPosition().x(), theLibJolly.getJollyPosition().y()).translation;
         if(target.norm() >= 350.f) goto goToTargetForward;
       }
 
       action
       {
-        RadAngle angle = theLibMisc.getMirrorAngle(theFieldBall.recentBallPositionOnField(), theRobotPose.translation, GlobalVector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosCenterGoal));
+        // theTurnToPointSkill(theFieldBall.recentBallPositionRelative());
+        Angle angle = theLibMisc.getMirrorAngle(theFieldBall.recentBallPositionOnField(), theRobotPose.translation, Vector2f(theFieldDimensions.xPosOpponentGroundLine, theFieldDimensions.yPosCenterGoal));
         theTurnAngleSkill(angle);
         theArmObstacleAvoidanceSkill();
         if(theFieldBall.timeSinceBallWasSeen < ballSeenTimeout) theLookAtBallSkill();
         else theLookAtGlobalBallSkill();
       } 
     }
-
   }
+
 };
 
 MAKE_CARD(JollyCard);

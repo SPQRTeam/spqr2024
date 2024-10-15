@@ -1,0 +1,3 @@
+[submodule "Util/SpqrControlGUI"]
+	path = Util/SpqrControlGUI
+	url = https://github.com/neverorfrog/hri-challenge.git

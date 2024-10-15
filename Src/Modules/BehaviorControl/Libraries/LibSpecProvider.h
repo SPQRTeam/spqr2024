@@ -109,6 +109,4 @@ private:
   Vector2f freeKickWall(Vector2f robot) const;
 
   bool isGoaliePlaying() const;
-
-  bool isTherePassKickoffCondition(Vector2f& passTarget);
 };

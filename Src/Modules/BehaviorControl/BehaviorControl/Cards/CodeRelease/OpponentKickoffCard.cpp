@@ -46,8 +46,6 @@ class OpponentKickoffCard : public OpponentKickoffCardBase
 {
   bool preconditions() const override
   {
-    // this condition works better than theKickoffState.isKickoff
-    // for opponent Kickoff
     return !theKickoffState.allowedToEnterCenterCircle && theGameInfo.kickingTeam != Global::getSettings().teamNumber;
   }
 

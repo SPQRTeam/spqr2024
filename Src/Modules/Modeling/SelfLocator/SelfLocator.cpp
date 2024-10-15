@@ -532,19 +532,8 @@ void SelfLocator::handleSideInformation()
 
 void SelfLocator::handleGameStateChanges()
 {
-  if(theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
-  {
-    // penalty shoot: if game state switched to playing reset samples to start position
-    if((theExtendedGameInfo.gameStateLastFrame != STATE_PLAYING && theGameInfo.state == STATE_PLAYING) ||
-       (theExtendedGameInfo.penaltyLastFrame != PENALTY_NONE && theRobotInfo.penalty == PENALTY_NONE))
-    {
-      for(int i = 0; i < samples->size(); ++i)
-        samples->at(i).init(getNewPoseAtPenaltyShootoutPosition(), penaltyShootoutPoseDeviation, nextSampleNumber++, 1.f);
-      sampleSetHasBeenReset = true;
-    }
-  }
   // If the robot has been lifted during SET, reset samples to manual positioning line positions
-  else if(theExtendedGameInfo.manuallyPlaced && theGameInfo.state == STATE_SET)
+  if(theExtendedGameInfo.manuallyPlaced || theGameInfo.state == STATE_SET || theExtendedGameInfo.returnFromGameControllerPenalty || theExtendedGameInfo.returnFromManualPenalty || theExtendedGameInfo.startingCalibration)
   {
     for(int i = 0; i < samples->size(); ++i)
     {
@@ -553,36 +542,7 @@ void SelfLocator::handleGameStateChanges()
     sampleSetHasBeenReset = true;
     timeOfLastReturnFromPenalty = theFrameInfo.time;
   }
-  // If a penalty is over, reset samples to reenter positions
-  else if(theExtendedGameInfo.returnFromGameControllerPenalty || theExtendedGameInfo.returnFromManualPenalty || theExtendedGameInfo.startingCalibration)
-  {
-    int startOfSecondHalfOfSampleSet = samples->size() / 2;
-    // The first half of the new sample set is left of the own goal ...
-    for(int i = 0; i < startOfSecondHalfOfSampleSet; ++i)
-      samples->at(i).init(getNewPoseReturnFromPenaltyPosition(true), returnFromPenaltyPoseDeviation, nextSampleNumber++, 0.5f);
-    // ... and the second half of new sample set is right of the own goal.
-    for(int i = startOfSecondHalfOfSampleSet; i < samples->size(); ++i)
-      samples->at(i).init(getNewPoseReturnFromPenaltyPosition(false), returnFromPenaltyPoseDeviation, nextSampleNumber++, 0.5f);
-    sampleSetHasBeenReset = true;
-    timeOfLastReturnFromPenalty = theFrameInfo.time;
-  }
-  // Normal game is about to start: We start on the sidelines looking at our goal: (this is for checking in TeamCom)
-  else if((theExtendedGameInfo.gameStateLastFrame != STATE_INITIAL && theGameInfo.state == STATE_INITIAL) ||
-          // Normal game really starts: We start on the sidelines looking at our goal: (this is for actual setup)
-          (theExtendedGameInfo.gameStateLastFrame != STATE_STANDBY && theGameInfo.state == STATE_STANDBY) ||
-          (theExtendedGameInfo.gameStateLastFrame == STATE_STANDBY && theGameInfo.state == STATE_READY))
-  {
-    for(int i = 0; i < samples->size(); ++i)
-      samples->at(i).init(getNewPoseAtWalkInPosition(), walkInPoseDeviation, nextSampleNumber++, 0.5f);
-    sampleSetHasBeenReset = true;
-  }
-  /* For testing purposes in simulator */
-  else if(theStaticInitialPose.isActive && theStaticInitialPose.jump)
-  {
-    for(int i = 0; i < samples->size(); ++i)
-      samples->at(i).init(theStaticInitialPose.staticPoseOnField, manualPlacementPoseDeviation, nextSampleNumber++, 0.5f);
-    sampleSetHasBeenReset = true;
-  }
+ 
   if(sampleSetHasBeenReset)
   {
     idOfLastBestSample = -1;
@@ -816,7 +776,8 @@ Pose2f SelfLocator::getNewPoseAtWalkInPosition()
 
   if(effectivePlayerNumber >= 1 && effectivePlayerNumber <= SPQR_MAX_PLAYER_NUMBER) //SIM
   {
-    const SetupPoses::SetupPose& p = theSetupPoses.getPoseOfRobot(effectivePlayerNumber);
+    bool weAreAttacking = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
+    const SetupPoses::SetupPose& p = theSetupPoses.getPoseOfRobot(effectivePlayerNumber, weAreAttacking);
     Pose2f result;
     result.translation = p.position;
     result.rotation    = (p.turnedTowards - p.position).angle();
@@ -833,30 +794,15 @@ Pose2f SelfLocator::getNewPoseAtWalkInPosition()
 //FLAVIOM
 Pose2f SelfLocator::getNewPoseAtManualPlacementPosition()
 {
-  // Goalie
-  if(theRobotInfo.isGoalkeeper())
+  const int effectivePlayerNumber = theOwnTeamInfo.getSubstitutedPlayerNumber(theRobotInfo.number);
+
+  if(effectivePlayerNumber >= 1 && effectivePlayerNumber <= SPQR_MAX_PLAYER_NUMBER) //SIM
   {
-    return Pose2f(0.f, theFieldDimensions.xPosOwnGroundLine + 52.f, 0.f);
-  }
-  else
-  {
+    bool weAreAttacking = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
+    const SetupPoses::SetupPose& p = theSetupPoses.getPoseOfRobot(effectivePlayerNumber, weAreAttacking);
     Pose2f result;
-    switch(nextManualPlacementPoseNumber)
-    {
-      case 0:
-        result = Pose2f(0.f, theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? -theFieldDimensions.centerCircleRadius - 127.f : theFieldDimensions.xPosOwnPenaltyArea + 127.f, 0.f);
-        break;
-      case 1:
-        result = Pose2f(0.f, theFieldDimensions.xPosOwnPenaltyMark, 0.f);
-        break;
-      case 2:
-        result = Pose2f(0.f, theFieldDimensions.xPosOwnPenaltyMark, (theFieldDimensions.yPosLeftPenaltyArea + theFieldDimensions.yPosLeftSideline) / 2.f);
-        break;
-      case 3:
-        result = Pose2f(0.f, theFieldDimensions.xPosOwnPenaltyMark, (theFieldDimensions.yPosRightPenaltyArea + theFieldDimensions.yPosRightSideline) / 2.f);
-        break;
-    }
-    nextManualPlacementPoseNumber = (nextManualPlacementPoseNumber + 1) % 4; 
+    result.translation = p.position;
+    result.rotation    = (p.turnedTowards - p.position).angle();
     return result;
   }
 }
