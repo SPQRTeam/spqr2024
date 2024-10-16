@@ -4,14 +4,19 @@
 
 ## 🆕 Added
    ➕ Referee's gesture recognition model \
-   ➕ Whistle detection model 
-
+   ➕ Whistle detection model \
+   ➕ Passages system \
+   ➕ Debug Viewer on TCM \
+   ➕ ONNX wrapper \
+   ➕ Dynamic packets management
+   
 ## 🔄 Changed
    🔧 Ball perceptor \
-   🔧 Behaviors
+   🔧 Behaviors \
+   🔧 Coordination with position graph
 
-## 🐛 Fixed
-## ❌ Removed
+## 🚫 Removed
+   ❌ Packets similarity system
 
 # Installation
 
