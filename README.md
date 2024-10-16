@@ -1,5 +1,18 @@
 # SPQR Team Code used in RoboCup 2024 based on B-Human 2021 Code Release
 
+# Changelog
+
+## 🆕 Added
+   ➕ Referee's gesture recognition model \
+   ➕ Whistle detection model 
+
+## 🔄 Changed
+   🔧 Ball perceptor \
+   🔧 Behaviors
+
+## 🐛 Fixed
+## ❌ Removed
+
 # Installation
 
 ### Supported distros:
