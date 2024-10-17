@@ -1,5 +1,23 @@
 # SPQR Team Code used in RoboCup 2024 based on B-Human 2021 Code Release
 
+# Changelog
+
+## 🆕 Added
+   ➕ Referee's gesture recognition model \
+   ➕ Whistle detection model \
+   ➕ Passages system \
+   ➕ Debug Viewer on TCM \
+   ➕ ONNX wrapper \
+   ➕ Dynamic packets management
+   
+## 🔄 Changed
+   🔧 Ball perceptor \
+   🔧 Behaviors \
+   🔧 Coordination with position graph
+
+## 🚫 Removed
+   ❌ Packets similarity system
+
 # Installation
 
 ### Supported distros:
