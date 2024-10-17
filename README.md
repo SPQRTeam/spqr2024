@@ -1,5 +1,13 @@
 # SPQR Team Code used in Shared Autonomy Challenge during RoboCup 2024 based on B-Human 2021 Code Release
 
+The developed code is in the following directories:
+  - [Control Interface](https://github.com/neverorfrog/hri-challenge.git) (also to be found as submodule under [Util](https://github.com/SPQRTeam/spqr2024/tree/challenge/Util))
+  - [Modules for sending images to the Control Interface](https://github.com/SPQRTeam/spqr2024/tree/challenge/Src/Modules/Challenge/ChallengeImageProvider)
+  - [Modules for sending current information about the world to the control interface](https://github.com/SPQRTeam/spqr2024/tree/challenge/Src/Modules/Communication/DebugMessageHandler)
+  - [Modules for receiving commands from the Control Interface](https://github.com/SPQRTeam/spqr2024/tree/challenge/Src/Modules/Challenge/CommandReceiver)
+  - [Representations for storing the image to be sent and the received commands](https://github.com/SPQRTeam/spqr2024/tree/challenge/Src/Representations/Challenge)
+  - [Behaviors for autonomous and controlled robot](https://github.com/SPQRTeam/spqr2024/tree/challenge/Src/Modules/BehaviorControl/BehaviorControl/Cards/Challenge)
+
 # Installation
 
 ### Supported distros:
