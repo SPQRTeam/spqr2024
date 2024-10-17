@@ -18,6 +18,9 @@
 ## 🚫 Removed
    ❌ Packets similarity system
 
+## 🤖 Shared Autonomy Challenge
+   See branch [challenge](https://github.com/SPQRTeam/spqr2024/tree/challenge)
+
 # Installation
 
 ### Supported distros:
