@@ -21,6 +21,59 @@
 ## 🤖 Shared Autonomy Challenge
    See branch [challenge](https://github.com/SPQRTeam/spqr2024/tree/challenge)
 
+# Real-Time Multimodal Signal Processing for HRI in RoboCup: Understanding a Human Referee
+
+[![arXiv](https://img.shields.io/badge/arXiv-PDF-b31b1b.svg)](https://arxiv.org/abs/1234.56789)
+
+### [Filippo Ansalone]()$^1$, [Flavio Maiorana]()$^1$, [Daniele Affinita]()$^1$, [Flavio Volpi]()$^1$, [Eugenio Bugli]()$^1$, [Francesco Petri]()$^1$, [Michele Brienza]()$^1$, [Valerio Spagnoli]()$^1$, [Vincenzo Suriani]()$^2$, [Daniele Nardi]()$^1$, [Domenico Daniele Bloisi]()$^3$
+
+#### $^1$ Department of Computer, Control and Management Engineering, Sapienza University of Rome, Rome, Italy, $^2$ School of Engineering, University of Basilicata, Potenza, Italy, $^3$ International University of Rome UNINT, Rome, Italy
+
+Overview of the RoboCup SPL field during the standby phase in two different perspectives:
+External Perspective | Robot's perspective
+------------------------|-------------------------
+<img src="https://github.com/user-attachments/assets/dedc53b3-3240-4c1d-a4a7-c0e02ad69944" width=1500/> | <img src="https://github.com/user-attachments/assets/9fda8b93-944e-4ea8-abfc-41d4302a272d" width=1500 height=270/>
+
+Overall performance evaluation of both networks used to interpret the human referee, reporting metrics from both the dataset and real scenarios:
+
+**Whistle Recognition Results:**
+|                              | Accuracy   | Precision | Recall |
+|------------------------------|------------|-----------|--------|
+|Test Data                     |    98%     |    80%    |   90%  |
+|Real Scenario (Playing)       | 75%        |    100%   |   80%  |
+|Real Scenario (Ready and Set) | 100%       |    100%   |   100% |
+
+**Gesture Recognition Results:**
+|             | Accuracy   | Precision | Recall | F1-Score |
+|-------------|------------|-----------|--------|----------|
+|Test Data    |    99%     |    99%    |   99%  |     99%  |
+|Real Scenario| 50%        |    100%   |    50% |      66% |
+
+Please cite our work as:
+```
+@InProceedings{UnderstandingHumanReferee,
+author="Ansalone, Filippo
+and Maiorana, Flavio
+and Affinita, Daniele
+and Volpi, Flavio
+and Bugli, Eugenio
+and Petri, Francesco
+and Brienza, Michele
+and Spagnoli, Valerio
+and Suriani, Vincenzo
+and Nardi, Daniele
+and Bloisi, Domenico Daniele",
+editor="",
+title="Real-Time Multimodal Signal Processing for HRI in RoboCup: Understanding a Human Referee",
+booktitle="11th Italian Workshop on Artificial Intelligence and Robotics (AIRO 2024)",
+year="2024",
+publisher="",
+address="",
+pages="",
+isbn=""
+}
+```
+
 # Installation
 
 ### Supported distros:
@@ -160,7 +213,8 @@ Here's a list of known issues and errors and their respective solutions:
   2) Export its path to 
 * GCC version error: if you get an error that looks like a compiler version error (such as "no member named 'strlen' in namespace 'std'")
 
-  The framework requires a GCC version <= 11. You can check what GCC version clang is using by typing 
+  The framework requires a GCC version <= 11. You can check what GCC version clang is using by typing
+
   ```
   clang -v
   ```  
@@ -169,4 +223,3 @@ Here's a list of known issues and errors and their respective solutions:
   Selected GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/XX
   ```
   Where instead of XX there will be the selected GCC version.
-
