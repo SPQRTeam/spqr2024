@@ -33,7 +33,7 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-PDF-b31b1b.svg)](https://arxiv.org/abs/1234.56789)
 
-#### [Filippo Ansalone]()$^1$, [Flavio Maiorana]()$^1$, [Daniele Affinita]()$^1$, [Flavio Volpi]()$^1$, [Eugenio Bugli]()$^1$, [Francesco Petri]()$^1$, [Michele Brienza]()$^1$, [Valerio Spagnoli]()$^1$, [Vincenzo Suriani]()$^2$, [Daniele Nardi]()$^1$, [Domenico Daniele Bloisi]()$^3$
+#### [Filippo Ansalone](https://orcid.org/0009-0002-0492-4748)$^1$, [Flavio Maiorana](https://orcid.org/0009-0003-2059-7254)$^1$, [Daniele Affinita](https://orcid.org/0009-0000-9347-9847)$^1$, [Flavio Volpi](https://orcid.org/0009-0004-9822-5124)$^1$, [Eugenio Bugli](https://orcid.org/0009-0000-9540-681X)$^1$, [Francesco Petri](https://orcid.org/0009-0008-6208-1498)$^1$, [Michele Brienza](https://orcid.org/0009-0000-1549-9500)$^1$, [Valerio Spagnoli](https://orcid.org/0009-0008-0284-9602)$^1$, [Vincenzo Suriani](https://orcid.org/0000-0003-1199-8358)$^2$, [Daniele Nardi](https://orcid.org/0000-0001-6606-200X)$^1$, [Domenico Daniele Bloisi](https://orcid.org/0000-0003-0339-8651)$^3$
 
 ##### $^1$ Department of Computer, Control and Management Engineering, Sapienza University of Rome, Rome, Italy, $^2$ School of Engineering, University of Basilicata, Potenza, Italy, $^3$ International University of Rome UNINT, Rome, Italy
 
