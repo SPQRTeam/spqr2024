@@ -21,7 +21,7 @@
 ## 🤖 Shared Autonomy Challenge
    See branch [challenge](https://github.com/SPQRTeam/spqr2024/tree/challenge)
 
-## 🆕 Notable Improvements
+## 🚀 Notable Improvements
 
    We have re-designed our **Whistle Detection** approach involving a Continuos Kernel CNN, which adapts to varying input lengths and resolutions. 
    In addition to that, we have a stronger and robust **Gesture Recognition** module that uses pre-trained Movenet Lightning to perform keypoints extraction along with the calculations of useful joint angles. 
