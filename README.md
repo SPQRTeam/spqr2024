@@ -44,7 +44,7 @@ External Perspective | Robot's perspective
 
 Overall performance evaluation of both networks used to interpret the human referee, reporting metrics from both the dataset and real scenarios:
 
-**Whistle Recognition Results** based on 147440 test samples and 73 real situations over 9 games:
+**Whistle Recognition Results** based on 147440 test samples and 73 real situations over 8 games:
 |                              | Accuracy   | Precision | Recall |
 |------------------------------|------------|-----------|--------|
 |Test Data                     |    98.02%  | 79.36%    |  90.35%|
