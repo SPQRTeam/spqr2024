@@ -51,7 +51,7 @@ Overall performance evaluation of both networks used to interpret the human refe
 |Real Scenario (Playing)       | 75%        |    100%   |   80%  |
 |Real Scenario (Ready and Set) | 100%       |    100%   |   100% |
 
-**Gesture Recognition Results** based on 153 test samples and 18 real situations over 9 games:
+**Gesture Recognition Results** based on 153 test samples and 18 real situations over 8 games:
 |             | Accuracy   | Precision | Recall | F1-Score |
 |-------------|------------|-----------|--------|----------|
 |Test Data    |    99%     |    99%    |   99%  |     99%  |
