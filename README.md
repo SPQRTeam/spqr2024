@@ -31,7 +31,7 @@
 
 # Real-Time Multimodal Signal Processing for HRI in RoboCup: Understanding a Human Referee
 
-[![arXiv](https://img.shields.io/badge/arXiv-PDF-b31b1b.svg)](https://arxiv.org/abs/1234.56789)
+[![arXiv](https://img.shields.io/badge/arXiv-2411.17347-b31b1b.svg)](https://arxiv.org/abs/2411.17347)
 
 #### [Filippo Ansalone](https://orcid.org/0009-0002-0492-4748)$^1$, [Flavio Maiorana](https://orcid.org/0009-0003-2059-7254)$^1$, [Daniele Affinita](https://orcid.org/0009-0000-9347-9847)$^1$, [Flavio Volpi](https://orcid.org/0009-0004-9822-5124)$^1$, [Eugenio Bugli](https://orcid.org/0009-0000-9540-681X)$^1$, [Francesco Petri](https://orcid.org/0009-0008-6208-1498)$^1$, [Michele Brienza](https://orcid.org/0009-0000-1549-9500)$^1$, [Valerio Spagnoli](https://orcid.org/0009-0008-0284-9602)$^1$, [Vincenzo Suriani](https://orcid.org/0000-0003-1199-8358)$^2$, [Daniele Nardi](https://orcid.org/0000-0001-6606-200X)$^1$, [Domenico Daniele Bloisi](https://orcid.org/0000-0003-0339-8651)$^3$
 
